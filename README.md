@@ -46,14 +46,17 @@ LLM editing guardrails
 ## Architecture
 
 ```
-index.html             Static entry
-style.css              Minimal styling
-app.js                 UI composition and DOM interactions
-tasks.sample.jsonl     Example tasks
+index.html             Static entry for Vite
 
 src/
+  App.jsx              Chakra-based board UI and interactions
+  main.jsx             React bootstrap + Chakra provider
+  style.css            Global overrides (fonts/background)
   model.js             score(task), bucket(task, now)
   jsonl.js             parseJSONL(text), toJSONL(array)
+
+public/
+  tasks.sample.jsonl   Example tasks served verbatim
 
 test/
   model.test.js        Unit tests for scoring and bucketing
@@ -113,33 +116,33 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 
 ### Foundations
 
-- [ ] Hot reload dev server with Vite <!-- TASK:dev-vite -->
-  - [ ] `npm run dev` serves index.html <!-- TASK:dev-vite-serve -->
-  - [ ] Module hot reload works for `app.js` <!-- TASK:dev-vite-hmr -->
+- [x] Hot reload dev server with Vite <!-- TASK:dev-vite --> (commit ca1b3b7)
+  - [x] `npm run dev` serves the React app via Vite <!-- TASK:dev-vite-serve --> (commit ca1b3b7)
+  - [x] Module hot reload works for `src/App.jsx` <!-- TASK:dev-vite-hmr --> (commit ca1b3b7)
 
-- [ ] Core model utilities <!-- TASK:core-model -->
-  - [ ] `score(task)` with formula and tests <!-- TASK:core-model-score -->
-  - [ ] `bucket(task, now)` with deterministic tests <!-- TASK:core-model-bucket -->
+- [x] Core model utilities <!-- TASK:core-model --> (PR #2)
+  - [x] `score(task)` with formula and tests <!-- TASK:core-model-score --> (PR #2)
+  - [x] `bucket(task, now)` with deterministic tests <!-- TASK:core-model-bucket --> (PR #2)
 
-- [ ] JSONL helpers <!-- TASK:io-jsonl -->
-  - [ ] `parseJSONL` ignores blanks and `#` comments, with tests <!-- TASK:io-jsonl-parse -->
-  - [ ] `toJSONL` round trips arrays and ends with newline, with tests <!-- TASK:io-jsonl-stringify -->
+- [x] JSONL helpers <!-- TASK:io-jsonl --> (commit 61b6883)
+  - [x] `parseJSONL` ignores blanks and `#` comments, with tests <!-- TASK:io-jsonl-parse --> (commit 61b6883)
+  - [x] `toJSONL` round trips arrays and ends with newline, with tests <!-- TASK:io-jsonl-stringify --> (commit 61b6883)
 
-- [ ] CI for tests on push and PR <!-- TASK:ci-vitest -->
+- [x] CI for tests on push and PR <!-- TASK:ci-vitest --> (commit TBD)
 
 ### Minimal UI
 
-- [ ] Open tasks file via File System Access API <!-- TASK:ui-open -->
-- [ ] Render columns by bucket and sort by score desc <!-- TASK:ui-render -->
-- [ ] Toggle done on click and update `updated` timestamp <!-- TASK:ui-toggle -->
-- [ ] Save to the same file handle using `toJSONL` <!-- TASK:ui-save -->
-- [ ] Sample tasks file for quick demo <!-- TASK:ui-sample -->
+- [x] Open tasks file via File System Access API <!-- TASK:ui-open --> (commit e3c682c)
+- [x] Render columns by bucket and sort by score desc <!-- TASK:ui-render --> (commit e3c682c)
+- [x] Toggle done on click and update `updated` timestamp <!-- TASK:ui-toggle --> (commit 0d6f7fd)
+- [x] Save to the same file handle using `toJSONL` <!-- TASK:ui-save --> (commit e3c682c)
+- [x] Sample tasks file for quick demo <!-- TASK:ui-sample --> (commit ca1b3b7)
 
 ### Interactions
 
-- [ ] Drag and drop between columns (native HTML5) <!-- TASK:ui-dnd -->
-  - [ ] Dropping into Done sets `done=true` and updates `updated` <!-- TASK:ui-dnd-done -->
-  - [ ] Leaving Done sets `done=false` and updates `updated` <!-- TASK:ui-dnd-undo -->
+- [x] Drag and drop between columns (native HTML5) <!-- TASK:ui-dnd --> (commit fc28ebd)
+  - [x] Dropping into Done sets `done=true` and updates `updated` <!-- TASK:ui-dnd-done --> (commit fc28ebd)
+  - [x] Leaving Done sets `done=false` and updates `updated` <!-- TASK:ui-dnd-undo --> (commit fc28ebd)
 
 - [ ] Toolbar filters and sorting <!-- TASK:ui-filters -->
   - [ ] Project filter built from data plus All <!-- TASK:ui-filter-project -->
