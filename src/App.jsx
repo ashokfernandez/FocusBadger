@@ -1,48 +1,152 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonGroup,
+  Checkbox,
+  Container,
+  Flex,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Heading,
+  HStack,
+  Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  NumberInput,
+  NumberInputField,
+  SimpleGrid,
+  Stack,
+  Tag,
+  Text,
+  Textarea,
+  useDisclosure
+} from "@chakra-ui/react";
+import { CheckIcon } from "@chakra-ui/icons";
+import { motion } from "framer-motion";
 import { parseJSONL, toJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
 
 const BUCKETS = ["Today", "This week", "Later", "No date", "Done"];
 
-function TaskCard({ item, onEdit }) {
+function sanitizeNumber(value) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseTags(value) {
+  if (!value) return undefined;
+  const tags = value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  return tags.length ? tags : undefined;
+}
+
+const MotionCircle = motion(Box);
+
+function TaskCard({ item, onEdit, onToggleDone }) {
   const { task, index } = item;
+  const [isDragging, setDragging] = useState(false);
+  const [isPopping, setPopping] = useState(false);
 
   const handleDragStart = useCallback(
     (event) => {
       if (!event.dataTransfer) return;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", String(index));
-      event.currentTarget.classList.add("dragging");
+      setDragging(true);
     },
     [index]
   );
 
-  const handleDragEnd = useCallback((event) => {
-    event.currentTarget.classList.remove("dragging");
+  const handleDragEnd = useCallback(() => {
+    setDragging(false);
   }, []);
 
-  const metaBits = [];
-  if (task.project) metaBits.push(task.project);
-  if (task.due) metaBits.push(`due ${task.due}`);
-  metaBits.push(`score ${score(task)}`);
+  const handleToggle = useCallback(
+    (event) => {
+      event.stopPropagation();
+      onToggleDone(index);
+      setPopping(true);
+    },
+    [index, onToggleDone]
+  );
+
+  useEffect(() => {
+    if (!isPopping) return;
+    const timeout = setTimeout(() => setPopping(false), 220);
+    return () => clearTimeout(timeout);
+  }, [isPopping]);
 
   return (
-    <li
-      className="card"
+    <Box
+      as="li"
       draggable
       onClick={() => onEdit(index)}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      cursor="grab"
+      borderWidth="1px"
+      borderRadius="xl"
+      p={4}
+      bg={task.done ? "gray.100" : "white"}
+      boxShadow={isDragging ? "lg" : "sm"}
+      transition="all 0.15s ease"
+      _hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
+      display="flex"
+      flexDirection="column"
+      gap={3}
     >
-      <span className="title">
-        {task.done ? "✔︎" : "○"} {task.title}
-      </span>
-      <span className="meta">{metaBits.join(" • ")}</span>
-    </li>
+      <Flex align="center" gap={3}>
+        <MotionCircle
+          w={8}
+          h={8}
+          borderRadius="full"
+          borderWidth="2px"
+          borderColor={task.done ? "green.400" : "gray.300"}
+          bg={task.done ? "green.400" : "white"}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          color="white"
+          role="button"
+          aria-pressed={task.done}
+          onClick={handleToggle}
+          whileTap={{ scale: 0.9 }}
+          animate={isPopping ? { scale: [1, 1.2, 1], rotate: [0, -5, 5, 0] } : {}}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+        >
+          {task.done ? <CheckIcon w={3} h={3} /> : null}
+        </MotionCircle>
+        <Box>
+          <Heading as="h3" size="sm">
+            {task.title}
+          </Heading>
+          <Text fontSize="sm" color="gray.500">
+            {task.notes ? task.notes : "Click to edit details"}
+          </Text>
+        </Box>
+      </Flex>
+      <HStack spacing={2} flexWrap="wrap">
+        {task.project ? <Tag colorScheme="purple">{task.project}</Tag> : null}
+        {task.due ? <Tag colorScheme="orange">Due {task.due}</Tag> : null}
+        <Tag colorScheme="blue">Score {score(task)}</Tag>
+      </HStack>
+    </Box>
   );
 }
 
-function BucketColumn({ name, items, onEditTask, onDropTask }) {
+function BucketColumn({ name, items, onEditTask, onDropTask, onToggleTask }) {
   const [isHover, setHover] = useState(false);
 
   const handleDragOver = useCallback(
@@ -71,34 +175,45 @@ function BucketColumn({ name, items, onEditTask, onDropTask }) {
   );
 
   return (
-    <div className={`col${isHover ? " drop-hover" : ""}`} data-bucket={name}>
-      <h2>{name}</h2>
-      <ul onDragOver={handleDragOver} onDrop={handleDrop} onDragLeave={handleDragLeave}>
+    <Box
+      borderWidth="1px"
+      borderRadius="2xl"
+      bg="gray.50"
+      minH="320px"
+      display="flex"
+      flexDirection="column"
+      boxShadow={isHover ? "xl" : "md"}
+      transition="border-color 0.15s ease, box-shadow 0.15s ease"
+      borderColor={isHover ? "blue.400" : "gray.100"}
+    >
+      <Flex align="center" justify="space-between" px={5} py={4} borderBottomWidth="1px">
+        <Heading size="sm">{name}</Heading>
+        <Badge colorScheme="gray">{items.length}</Badge>
+      </Flex>
+      <Stack
+        as="ul"
+        spacing={3}
+        flex="1"
+        px={5}
+        py={4}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragLeave={handleDragLeave}
+      >
         {items.map((item) => (
-          <TaskCard key={item.index} item={item} onEdit={onEditTask} />
+          <TaskCard
+            key={item.index}
+            item={item}
+            onEdit={onEditTask}
+            onToggleDone={onToggleTask}
+          />
         ))}
-      </ul>
-    </div>
+      </Stack>
+    </Box>
   );
 }
 
-function sanitizeNumber(value) {
-  const trimmed = String(value ?? "").trim();
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function parseTags(value) {
-  if (!value) return undefined;
-  const tags = value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  return tags.length ? tags : undefined;
-}
-
-function TaskEditor({ task, onCancel, onSave }) {
+function TaskEditor({ task, isOpen, onCancel, onSave }) {
   const [form, setForm] = useState(() => ({
     title: task?.title ?? "",
     project: task?.project ?? "",
@@ -111,6 +226,7 @@ function TaskEditor({ task, onCancel, onSave }) {
     done: Boolean(task?.done)
   }));
   const [error, setError] = useState("");
+  const titleRef = useRef(null);
 
   useEffect(() => {
     setForm({
@@ -155,113 +271,115 @@ function TaskEditor({ task, onCancel, onSave }) {
     [form, onSave]
   );
 
-  if (!task) return null;
-
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <form className="modal" onSubmit={handleSubmit}>
-        <header className="modal-header">
-          <h3>Edit task</h3>
-        </header>
-        <div className="field">
-          <label htmlFor="task-title">Title</label>
-          <input
-            id="task-title"
-            value={form.title}
-            onChange={(event) => handleChange("title", event.target.value)}
-            required
-          />
-        </div>
-        <div className="field-grid">
-          <label>
-            Project
-            <input
-              value={form.project}
-              onChange={(event) => handleChange("project", event.target.value)}
-            />
-          </label>
-          <label>
-            Due date
-            <input
-              type="date"
-              value={form.due}
-              onChange={(event) => handleChange("due", event.target.value)}
-            />
-          </label>
-        </div>
-        <div className="field-grid numbers">
-          <label>
-            Importance
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              value={form.importance}
-              onChange={(event) => handleChange("importance", event.target.value)}
-            />
-          </label>
-          <label>
-            Urgency
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              value={form.urgency}
-              onChange={(event) => handleChange("urgency", event.target.value)}
-            />
-          </label>
-          <label>
-            Effort
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              value={form.effort}
-              onChange={(event) => handleChange("effort", event.target.value)}
-            />
-          </label>
-        </div>
-        <div className="field">
-          <label htmlFor="task-tags">Tags (comma separated)</label>
-          <input
-            id="task-tags"
-            value={form.tags}
-            onChange={(event) => handleChange("tags", event.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="task-notes">Notes</label>
-          <textarea
-            id="task-notes"
-            rows={4}
-            value={form.notes}
-            onChange={(event) => handleChange("notes", event.target.value)}
-          />
-        </div>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={form.done}
-            onChange={(event) => handleChange("done", event.target.checked)}
-          />
-          <span>Mark as done</span>
-        </label>
-        {error ? <p className="error">{error}</p> : null}
-        <div className="modal-actions">
-          <button type="button" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="submit">Save</button>
-        </div>
-      </form>
-    </div>
+    <Modal isOpen={isOpen} onClose={onCancel} initialFocusRef={titleRef} size="lg">
+      <ModalOverlay />
+      <ModalContent as="form" onSubmit={handleSubmit}>
+        <ModalHeader>Edit task</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <Stack spacing={5}>
+            <FormControl isRequired isInvalid={Boolean(error)}>
+              <FormLabel>Title</FormLabel>
+              <Input
+                ref={titleRef}
+                value={form.title}
+                onChange={(event) => handleChange("title", event.target.value)}
+              />
+              {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
+            </FormControl>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <FormControl>
+                <FormLabel>Project</FormLabel>
+                <Input
+                  value={form.project}
+                  onChange={(event) => handleChange("project", event.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Due date</FormLabel>
+                <Input
+                  type="date"
+                  value={form.due}
+                  onChange={(event) => handleChange("due", event.target.value)}
+                />
+              </FormControl>
+            </SimpleGrid>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+              <FormControl>
+                <FormLabel>Importance</FormLabel>
+                <NumberInput
+                  min={0}
+                  value={form.importance}
+                  onChange={(valueString) => handleChange("importance", valueString)}
+                >
+                  <NumberInputField inputMode="numeric" />
+                </NumberInput>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Urgency</FormLabel>
+                <NumberInput
+                  min={0}
+                  value={form.urgency}
+                  onChange={(valueString) => handleChange("urgency", valueString)}
+                >
+                  <NumberInputField inputMode="numeric" />
+                </NumberInput>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Effort</FormLabel>
+                <NumberInput
+                  min={0}
+                  value={form.effort}
+                  onChange={(valueString) => handleChange("effort", valueString)}
+                >
+                  <NumberInputField inputMode="numeric" />
+                </NumberInput>
+              </FormControl>
+            </SimpleGrid>
+            <FormControl>
+              <FormLabel>Tags (comma separated)</FormLabel>
+              <Input
+                value={form.tags}
+                onChange={(event) => handleChange("tags", event.target.value)}
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Notes</FormLabel>
+              <Textarea
+                rows={4}
+                value={form.notes}
+                onChange={(event) => handleChange("notes", event.target.value)}
+              />
+            </FormControl>
+            <Checkbox
+              isChecked={form.done}
+              onChange={(event) => handleChange("done", event.target.checked)}
+            >
+              Mark as done
+            </Checkbox>
+          </Stack>
+        </ModalBody>
+        <ModalFooter>
+          <ButtonGroup spacing={3}>
+            <Button variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button colorScheme="blue" type="submit">
+              Save
+            </Button>
+          </ButtonGroup>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 }
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
-  const [editing, setEditing] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
   const fileHandleRef = useRef(null);
+  const disclosure = useDisclosure();
 
   const buckets = useMemo(() => {
     const now = new Date();
@@ -315,22 +433,38 @@ export default function App() {
     [updateTask]
   );
 
-  const handleOpenEditor = useCallback((index) => {
-    setEditing({ index });
-  }, []);
+  const handleOpenEditor = useCallback(
+    (index) => {
+      setEditingIndex(index);
+      disclosure.onOpen();
+    },
+    [disclosure]
+  );
+
+  const handleToggleDone = useCallback(
+    (index) => {
+      updateTask(index, (draft) => {
+        draft.done = !draft.done;
+        return true;
+      });
+    },
+    [updateTask]
+  );
 
   const handleSaveEdit = useCallback(
     (changes) => {
-      if (!editing) return;
-      updateTask(editing.index, () => ({ ...changes }));
-      setEditing(null);
+      if (editingIndex == null) return;
+      updateTask(editingIndex, () => ({ ...changes }));
+      disclosure.onClose();
+      setEditingIndex(null);
     },
-    [editing, updateTask]
+    [editingIndex, updateTask, disclosure]
   );
 
   const handleCancelEdit = useCallback(() => {
-    setEditing(null);
-  }, []);
+    disclosure.onClose();
+    setEditingIndex(null);
+  }, [disclosure]);
 
   const handleLoadSample = useCallback(async () => {
     const res = await fetch("/tasks.sample.jsonl");
@@ -364,35 +498,59 @@ export default function App() {
     alert("Saved");
   }, [tasks]);
 
-  const editingTask = editing ? tasks[editing.index] : null;
+  const editingTask = editingIndex != null ? tasks[editingIndex] : null;
 
   return (
-    <div>
-      <div className="actions">
-        <button type="button" onClick={handleLoadSample}>
-          Load sample
-        </button>
-        <button type="button" onClick={handleOpenFile}>
-          Open tasks.jsonl
-        </button>
-        <button type="button" onClick={handleSaveFile}>
-          Save
-        </button>
-      </div>
-      <div className="wrap">
-        {buckets.map(({ name, items }) => (
-          <BucketColumn
-            key={name}
-            name={name}
-            items={items}
-            onEditTask={handleOpenEditor}
-            onDropTask={handleDropTask}
-          />
-        ))}
-      </div>
+    <Container maxW="7xl" py={10}>
+      <Stack spacing={8}>
+        <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
+          <Box>
+            <Heading size="lg">TaskBadger</Heading>
+            <Text color="gray.500">Drag cards between buckets and edit details inline.</Text>
+          </Box>
+          <ButtonGroup ml={{ md: "auto" }} spacing={3}>
+            <Button variant="ghost" onClick={handleLoadSample}>
+              Load sample
+            </Button>
+            <Button onClick={handleOpenFile}>Open tasks.jsonl</Button>
+            <Button colorScheme="blue" onClick={handleSaveFile}>
+              Save
+            </Button>
+          </ButtonGroup>
+        </Flex>
+        <SimpleGrid columns={{ base: 1, lg: 2, xl: 3 }} spacing={6}>
+          {buckets.slice(0, 3).map(({ name, items }) => (
+            <BucketColumn
+              key={name}
+              name={name}
+              items={items}
+              onEditTask={handleOpenEditor}
+              onDropTask={handleDropTask}
+              onToggleTask={handleToggleDone}
+            />
+          ))}
+        </SimpleGrid>
+        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+          {buckets.slice(3).map(({ name, items }) => (
+            <BucketColumn
+              key={name}
+              name={name}
+              items={items}
+              onEditTask={handleOpenEditor}
+              onDropTask={handleDropTask}
+              onToggleTask={handleToggleDone}
+            />
+          ))}
+        </SimpleGrid>
+      </Stack>
       {editingTask ? (
-        <TaskEditor task={editingTask} onCancel={handleCancelEdit} onSave={handleSaveEdit} />
+        <TaskEditor
+          task={editingTask}
+          isOpen={disclosure.isOpen}
+          onCancel={handleCancelEdit}
+          onSave={handleSaveEdit}
+        />
       ) : null}
-    </div>
+    </Container>
   );
 }
