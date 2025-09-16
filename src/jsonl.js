@@ -1,11 +1,11 @@
 /** Utilities for working with JSON Lines (JSONL) payloads. */
-export function parseJSONL(text="") {
+export function parseJSONL(text = "") {
   if (!text) return [];
   const lines = text.split(/\r?\n/);
   const items = [];
   for (let i = 0; i < lines.length; i += 1) {
     const raw = lines[i].trim();
-    if (!raw) continue;
+    if (!raw || raw.startsWith("#")) continue;
     try {
       items.push(JSON.parse(raw));
     } catch (err) {
@@ -16,7 +16,7 @@ export function parseJSONL(text="") {
   return items;
 }
 
-export function toJSONL(records=[]) {
+export function toJSONL(records = []) {
   if (!Array.isArray(records) || records.length === 0) return "";
   return records.map((item) => JSON.stringify(item)).join("\n");
 }

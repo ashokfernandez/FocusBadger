@@ -1,25 +1,25 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `src/` contains the core scheduling logic; start with `src/model.js` for scoring and bucketing helpers.
+- `src/` hosts the React application plus shared helpers (`model.js`, `jsonl.js`, `App.jsx`, etc.). Entry code mounts from `src/main.jsx`.
+- `public/` contains static assets served verbatim (e.g., `tasks.sample.jsonl`). Anything placed here is available at the site root.
 - `test/` mirrors source modules with Vitest specs (`*.test.js`) that import from `src/` using relative paths.
-- `index.html` is the static entry point; keep scripts modular so it can be served without a bundler.
 - Generated dependencies live in `node_modules/`; never commit edits there.
 
 ## Development Setup & Commands
 - Install dependencies with `npm install` after cloning or when `package-lock.json` changes.
+- Start the hot-reloading dev server with `npm run dev` (Vite on port 5173); `npm run build` emits production assets and `npm run preview` serves that build locally.
 - Run the unit suite with `npm test` (alias for `vitest`); use `npx vitest --watch` for rapid feedback while editing.
-- For manual checks, open `index.html` in a browser or serve it via `npx http-server .` to verify DOM updates against model helpers.
 
 ## Coding Style & Naming Conventions
-- Use ES modules, two-space indentation, and trailing semicolons to match existing files.
-- Prefer double quotes for strings and camelCase for function and variable names; reserve PascalCase for future components.
-- Document data shapes with JSDoc typedefs, as seen in `src/model.js`, so editors derive types without TypeScript.
+- Use modern ES modules/JSX with two-space indentation. Keep React components in PascalCase and functions/utilities in camelCase.
+- Prefer double quotes for strings and descriptive prop names. Co-locate lightweight UI helpers near the components that use them.
+- Document shared data shapes with JSDoc typedefs where helpful so editors surface hints without TypeScript.
 
 ## Testing Guidelines
-- Co-locate new tests in `test/` with filenames following `<module>.test.js` and mirror the describe/it structure already in place.
-- Mock dates explicitly when logic depends on time (see `bucket` tests) to keep runs deterministic.
-- Before opening a PR, ensure `npm test` passes and collect coverage locally with `npx vitest --coverage` when sensitive logic changes.
+- Co-locate new tests in `test/` with filenames following `<module>.test.js` and reuse Vitest’s `describe`/`it` pattern already in place.
+- Mock dates explicitly when logic depends on time (see existing `bucket` tests) to keep runs deterministic.
+- Before opening a PR, ensure `npm test` passes and gather coverage locally with `npx vitest --coverage` when touching core scheduling or parsing logic.
 
 ## Commit & Pull Request Guidelines
 - Favor Conventional Commit prefixes (`feat:`, `fix:`, `chore:`); scope modules when it adds clarity (e.g., `feat(core): add planner view`).

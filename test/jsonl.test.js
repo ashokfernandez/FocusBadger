@@ -11,8 +11,13 @@ describe("parseJSONL", () => {
     expect(parseJSONL(text)).toEqual([
       { id: 1 },
       { name: "Task" },
-      { done: false },
+      { done: false }
     ]);
+  });
+
+  it("skips comment lines prefixed with #", () => {
+    const text = '# heading\n{"id":1}\n# trailing note';
+    expect(parseJSONL(text)).toEqual([{ id: 1 }]);
   });
 
   it("throws with line information for malformed JSON", () => {
