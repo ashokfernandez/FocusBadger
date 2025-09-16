@@ -1,0 +1,4 @@
+# TaskBadger sample tasks
+{"title":"Write weekly report","project":"Work","importance":3,"urgency":2,"effort":2,"due":"2025-09-19","done":false}
+{"title":"Buy birthday gift","project":"Home","importance":4,"urgency":4,"effort":1,"due":"2025-09-18","done":false}
+{"title":"Clean inbox","project":"Work","done":true}
