@@ -1,15 +1,22 @@
-/** Parse JSON Lines text to array. Ignore blank lines and lines that start with #. */
-export function parseJSONL(text) {
-  const out = [];
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) continue;
-    out.push(JSON.parse(line));
+/** Utilities for working with JSON Lines (JSONL) payloads. */
+export function parseJSONL(text="") {
+  if (!text) return [];
+  const lines = text.split(/\r?\n/);
+  const items = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const raw = lines[i].trim();
+    if (!raw) continue;
+    try {
+      items.push(JSON.parse(raw));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Invalid JSON on line ${i + 1}: ${message}`);
+    }
   }
-  return out;
+  return items;
 }
 
-/** Stringify array of objects to JSON Lines with trailing newline. */
-export function toJSONL(arr) {
-  return arr.map(o => JSON.stringify(o)).join("\n") + "\n";
+export function toJSONL(records=[]) {
+  if (!Array.isArray(records) || records.length === 0) return "";
+  return records.map((item) => JSON.stringify(item)).join("\n");
 }
