@@ -1,7 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { ChakraProvider, extendTheme } from "@chakra-ui/react";
 import App from "./App.jsx";
 import "./style.css";
+
+const theme = extendTheme({
+  config: {
+    initialColorMode: "light",
+    useSystemColorMode: false
+  }
+});
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
@@ -10,6 +18,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <ChakraProvider theme={theme}>
+      <App />
+    </ChakraProvider>
   </React.StrictMode>
 );
