@@ -246,9 +246,6 @@ function GlobalToolbar({
       data-testid="workspace-toolbar"
     >
       <Stack spacing={{ base: 3, md: 4 }}>
-        <Text fontSize="sm" color="gray.500">
-          Filters apply across the workspace. Pick the projects you need and choose a sort for project lists.
-        </Text>
         <MatrixFilterChips options={filterOptions} active={activeFilters} onToggle={onToggleFilter}>
           <Menu>
             <MenuButton
