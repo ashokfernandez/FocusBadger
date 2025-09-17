@@ -1,8 +1,8 @@
 import { FormControl, FormLabel, Switch, useColorMode } from "@chakra-ui/react";
 import { useEffect } from "react";
 
-export default function ColorModeToggle() {
-  const { colorMode, setColorMode, toggleColorMode } = useColorMode();
+export function useSystemColorModeSync() {
+  const { setColorMode } = useColorMode();
   useEffect(() => {
     if (typeof window === "undefined") return;
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -22,6 +22,11 @@ export default function ColorModeToggle() {
       }
     };
   }, [setColorMode]);
+}
+
+export default function ColorModeToggle() {
+  const { colorMode, toggleColorMode } = useColorMode();
+  useSystemColorModeSync();
   return (
     <FormControl display="flex" alignItems="center" width="auto">
       <FormLabel htmlFor="workspace-color-mode" mb="0" fontSize="sm" fontWeight="medium">

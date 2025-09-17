@@ -72,6 +72,7 @@ export default function App() {
   const [isJsonSaving, setIsJsonSaving] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(false);
   const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
+  const [activeFileName, setActiveFileName] = useState("");
   const [storageMode, setStorageMode] = useState(() => {
     if (typeof window === "undefined") return STORAGE_MODE_FILE;
     const stored = window.localStorage.getItem(STORAGE_MODE_KEY);
@@ -200,6 +201,7 @@ export default function App() {
       types: [{ description: "JSONL", accept: { "text/plain": [".jsonl"] } }]
     });
     fileHandleRef.current = handle;
+    setActiveFileName(handle.name ?? "");
     return handle;
   }, []);
 
@@ -665,9 +667,11 @@ export default function App() {
         } else {
           hasLoadedStoredSnapshotRef.current = false;
         }
+        setActiveFileName("");
         setStorageMode(STORAGE_MODE_LOCAL);
       } else {
         hasLoadedStoredSnapshotRef.current = true;
+        setActiveFileName(fileHandleRef.current?.name ?? "");
         setStorageMode(STORAGE_MODE_FILE);
       }
     },
@@ -685,6 +689,7 @@ export default function App() {
         if (!parsed.ok) continue;
         const { tasks: taskRecords, projects: projectList } = parsed;
         fileHandleRef.current = null;
+        setActiveFileName("");
         const snapshot = buildSnapshot(taskRecords, projectList);
         if (isLocalStorageMode) {
           lastSavedRef.current = "";
@@ -719,10 +724,13 @@ export default function App() {
     const parsed = parseJSONInput(text);
     if (!parsed.ok) {
       alert(parsed.error ?? "Unable to parse JSON");
+      fileHandleRef.current = null;
+      setActiveFileName("");
       return;
     }
     const { tasks: taskRecords, projects: projectList } = parsed;
     lastSavedRef.current = buildSnapshot(taskRecords, projectList);
+    setActiveFileName(handle.name ?? "");
     setProjects(projectList);
     setTasks(taskRecords);
     setSaveState({ status: "saved", timestamp: Date.now() });
@@ -731,6 +739,7 @@ export default function App() {
   const handleSaveFile = useCallback(async () => {
     const handle = await ensureHandleForSave();
     if (!handle) return;
+    setActiveFileName(handle.name ?? "");
     clearPendingSave();
     const snapshot = buildSnapshot(tasks, projects);
     setSaveState({ status: "saving" });
@@ -765,6 +774,7 @@ export default function App() {
           onSave={isLocalStorageMode ? undefined : handleSaveFile}
           isLocalStorageEnabled={isLocalStorageMode}
           onToggleLocalStorage={handleStorageModeToggle}
+          activeFileName={activeFileName}
         />
         <Tabs
           index={workspaceTabIndex}
