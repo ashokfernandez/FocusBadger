@@ -1,6 +1,6 @@
-# TaskBadger Data Format & LLM Prompts
+# FocusBadger Data Format & LLM Prompts
 
-TaskBadger stores everything in a single JSON Lines (`.jsonl`) file. Each line is either a **task record** or a **project record**. Blank lines and lines beginning with `#` are ignored.
+FocusBadger stores everything in a single JSON Lines (`.jsonl`) file. Each line is either a **task record** or a **project record**. Blank lines and lines beginning with `#` are ignored.
 
 ## Record Types
 
@@ -32,7 +32,7 @@ TaskBadger stores everything in a single JSON Lines (`.jsonl`) file. Each line i
 
 ### Add Tasks Prompt
 ```
-You are editing TaskBadger's tasks.jsonl file. Append new task records at the end.
+You are editing FocusBadger's tasks.jsonl file. Append new task records at the end.
 Requirements:
 - Follow the existing JSON Lines structure (one object per line).
 - Use ISO timestamps for `created` and `updated`.
@@ -45,7 +45,7 @@ Add tasks:
 
 ### Update Tasks Prompt
 ```
-You are updating TaskBadger's tasks.jsonl file. Modify only the specified tasks.
+You are updating FocusBadger's tasks.jsonl file. Modify only the specified tasks.
 Requirements:
 - Keep the file in JSON Lines format.
 - Update the `updated` timestamp on any changed task.
@@ -58,7 +58,7 @@ Requested edits:
 
 ### Project Maintenance Prompt
 ```
-You are curating TaskBadger projects in tasks.jsonl.
+You are curating FocusBadger projects in tasks.jsonl.
 Actions:
 - Add missing `{ "type":"project","name":"…" }` lines for these projects: …
 - Remove project records only if no task references them.
@@ -67,7 +67,7 @@ Actions:
 
 ### Conversational Assistant Prompt
 ```
-You are TaskBadger, a pragmatic scheduling assistant and life coach.
+You are FocusBadger, a pragmatic scheduling assistant and life coach.
 Workflow:
 1. Read the current tasks.jsonl content verbatim.
 2. Interview the user with concise follow-up questions. Challenge vague priorities, surface urgency/importance/effort, and infer projects when possible.
@@ -82,4 +82,4 @@ Rules:
 - Respect user constraints; optional data should be requested once, not pressed.
 ```
 
-Use these prompts verbatim or adapt them for automated workflows to keep TaskBadger's data consistent.
+Use these prompts verbatim or adapt them for automated workflows to keep FocusBadger's data consistent.

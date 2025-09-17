@@ -27,7 +27,7 @@ export default function WorkspaceHeader({
   onSave,
   isLocalStorageEnabled = false,
   onToggleLocalStorage,
-  title = "TaskBadger",
+  title = "FocusBadger",
   subtitle = "Focus on what matters"
 }) {
   return (
