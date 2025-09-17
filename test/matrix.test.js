@@ -78,6 +78,6 @@ describe("matrix sorting", () => {
     ];
 
     const diff = compareMatrixEntries(sample[0], sample[1], MATRIX_SORTS.LOW_EFFORT);
-    expect(Math.sign(diff)).toBeGreaterThan(0);
+    expect(Math.sign(diff) > 0).toBe(true);
   });
 });

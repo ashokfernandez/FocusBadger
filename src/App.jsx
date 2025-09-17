@@ -14,6 +14,10 @@ import {
   HStack,
   IconButton,
   Input,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -35,7 +39,7 @@ import {
   WrapItem,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, ChevronDownIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import { parseJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
@@ -45,8 +49,7 @@ import {
   collectProjects,
   deleteProject as deleteProjectHelper,
   hydrateRecords,
-  renameProject as renameProjectHelper,
-  compareInsensitive
+  renameProject as renameProjectHelper
 } from "./projects.js";
 import {
   ALL_PROJECTS,
@@ -57,6 +60,7 @@ import {
 } from "./matrix.js";
 import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
+import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -148,7 +152,7 @@ function MatrixFilterChips({ options, active, onToggle, children }) {
   const extraItems = useMemo(() => Children.toArray(children), [children]);
 
   return (
-    <Wrap spacing={2} mt={1}>
+    <Wrap spacing={{ base: 2, md: 3 }} mt={1}>
       {options.map((option) => {
         const selected = active.includes(option);
         return (
@@ -158,6 +162,7 @@ function MatrixFilterChips({ options, active, onToggle, children }) {
               variant={selected ? "solid" : "outline"}
               colorScheme={selected ? "purple" : "gray"}
               onClick={() => onToggle(option)}
+              aria-pressed={selected}
             >
               {renderLabel(option)}
             </Button>
@@ -205,6 +210,75 @@ function MatrixSortControl({ value, onChange }) {
         })}
       </ButtonGroup>
     </HStack>
+  );
+}
+
+function GlobalToolbar({
+  filterOptions,
+  activeFilters,
+  onToggleFilter,
+  sortMode,
+  onSortModeChange
+}) {
+  const sortOptions = useMemo(
+    () => [
+      { value: TOOLBAR_SORTS.SCORE, label: "Score (highest first)" },
+      { value: TOOLBAR_SORTS.DUE_DATE, label: "Due date (earliest)" },
+      { value: TOOLBAR_SORTS.TITLE, label: "Title (A–Z)" }
+    ],
+    []
+  );
+
+  const activeSortLabel = useMemo(() => {
+    const match = sortOptions.find((option) => option.value === sortMode);
+    return match ? match.label : sortOptions[0].label;
+  }, [sortOptions, sortMode]);
+
+  return (
+    <Box
+      bg="white"
+      borderRadius="2xl"
+      borderWidth="1px"
+      borderColor="gray.100"
+      boxShadow="md"
+      px={{ base: 4, md: 6 }}
+      py={{ base: 4, md: 5 }}
+      data-testid="workspace-toolbar"
+    >
+      <Stack spacing={{ base: 3, md: 4 }}>
+        <MatrixFilterChips options={filterOptions} active={activeFilters} onToggle={onToggleFilter}>
+          <Menu>
+            <MenuButton
+              as={Button}
+              size="xs"
+              variant="outline"
+              colorScheme="purple"
+              rightIcon={<ChevronDownIcon />}
+              data-testid="project-sort-select"
+            >
+              Sort: {activeSortLabel}
+            </MenuButton>
+            <MenuList>
+              {sortOptions.map((option) => {
+                const isActive = option.value === sortMode;
+                return (
+                  <MenuItem
+                    key={option.value}
+                    onClick={() => {
+                      if (isActive) return;
+                      onSortModeChange?.(option.value);
+                    }}
+                    fontWeight={isActive ? "semibold" : "normal"}
+                  >
+                    {option.label}
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          </Menu>
+        </MatrixFilterChips>
+      </Stack>
+    </Box>
   );
 }
 
@@ -890,12 +964,17 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
+  const [projectSortMode, setProjectSortMode] = useState(TOOLBAR_SORTS.SCORE);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
   const [saveState, setSaveState] = useState({ status: "idle" });
+  const hasUnassignedTasks = useMemo(
+    () => tasks.some((task) => !(task.project?.trim())),
+    [tasks]
+  );
   useEffect(() => {
     setProjects((prev) => {
       const derived = collectProjects(
@@ -912,19 +991,22 @@ export default function App() {
   useEffect(() => {
     setMatrixFilters((prev) => {
       if (prev.includes(ALL_PROJECTS)) return DEFAULT_MATRIX_FILTERS;
-      const allowed = new Set(projects.concat([UNASSIGNED_LABEL]));
+      const allowed = new Set(projects);
+      if (hasUnassignedTasks) {
+        allowed.add(UNASSIGNED_LABEL);
+      }
       const next = prev.filter((value) => value === ALL_PROJECTS || allowed.has(value));
       return next.length ? next : DEFAULT_MATRIX_FILTERS;
     });
-  }, [projects]);
+  }, [projects, hasUnassignedTasks]);
 
   const matrixFilterOptions = useMemo(() => {
     const options = [ALL_PROJECTS, ...projects];
-    if (!projects.includes(UNASSIGNED_LABEL)) {
+    if (hasUnassignedTasks) {
       options.push(UNASSIGNED_LABEL);
     }
     return options;
-  }, [projects]);
+  }, [projects, hasUnassignedTasks]);
 
   const clearPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -993,50 +1075,10 @@ export default function App() {
     };
   }, [tasks, matrixFilters, matrixSortMode]);
 
-  const projectGroups = useMemo(() => {
-    const map = new Map();
-    projects.forEach((name) => {
-      map.set(name, []);
-    });
-
-    const unassigned = [];
-
-    const sortItems = (items) =>
-      items.slice().sort((a, b) => {
-        if (a.task.done !== b.task.done) {
-          return a.task.done ? 1 : -1;
-        }
-        const scoreDiff = score(b.task) - score(a.task);
-        if (scoreDiff !== 0) return scoreDiff;
-        return a.task.title.localeCompare(b.task.title);
-      });
-
-    tasks.forEach((task, index) => {
-      const entry = { task, index };
-      const key = task.project?.trim();
-      if (key) {
-        if (!map.has(key)) {
-          map.set(key, [entry]);
-        } else {
-          map.get(key).push(entry);
-        }
-      } else {
-        unassigned.push(entry);
-      }
-    });
-
-    const entries = Array.from(map.entries())
-      .map(([name, items]) => ({ name, projectKey: name, items: sortItems(items) }))
-      .sort((a, b) => compareInsensitive(a.name, b.name));
-
-    entries.push({
-      name: UNASSIGNED_LABEL,
-      projectKey: undefined,
-      items: sortItems(unassigned)
-    });
-
-    return entries;
-  }, [tasks, projects]);
+  const projectGroups = useMemo(
+    () => projectSectionsFrom(tasks, projects, projectSortMode, matrixFilters),
+    [tasks, projects, projectSortMode, matrixFilters]
+  );
 
   const projectUsage = useMemo(() => {
     const counts = {};
@@ -1251,6 +1293,10 @@ export default function App() {
     setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
+  const handleProjectSortModeChange = useCallback((value) => {
+    setProjectSortMode((prev) => (prev === value ? prev : value));
+  }, []);
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -1351,21 +1397,34 @@ export default function App() {
           </Flex>
         </Flex>
 
+        <GlobalToolbar
+          filterOptions={matrixFilterOptions}
+          activeFilters={matrixFilters}
+          onToggleFilter={toggleMatrixFilter}
+          sortMode={projectSortMode}
+          onSortModeChange={handleProjectSortModeChange}
+        />
+
         <Stack spacing={6}>
           <Box>
-            <Stack spacing={2} mb={4}>
-              <Heading size="md">Priority matrix</Heading>
-              <Text fontSize="sm" color="gray.500">
-                Filter tasks and focus your time - what do you <i>really</i> need to be doing <i>right now</i>?
-              </Text>
-              <MatrixFilterChips
-                options={matrixFilterOptions}
-                active={matrixFilters}
-                onToggle={toggleMatrixFilter}
-              >
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              align={{ base: "flex-start", md: "center" }}
+              justify="space-between"
+              gap={{ base: 3, md: 4 }}
+              mb={4}
+            >
+              <Box>
+                <Heading size="md">Priority matrix</Heading>
+                <Text fontSize="sm" color="gray.500">
+                  Use the workspace filters above to zero in on the projects that matter most, then sort to
+                  decide what to tackle right now.
+                </Text>
+              </Box>
+              <Box mt={{ base: 1, md: 0 }}>
                 <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
-              </MatrixFilterChips>
-            </Stack>
+              </Box>
+            </Flex>
             <SimpleGrid columns={MATRIX_GRID_COLUMNS} spacing={6}>
               <MatrixQuadrant
                 title="Why aren't you doing this now?"
@@ -1421,7 +1480,8 @@ export default function App() {
             <Stack spacing={3} mb={4}>
               <Heading size="md">Projects</Heading>
               <Text fontSize="sm" color="gray.500">
-                Organise tasks by project
+                Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
+                section stays in sync.
               </Text>
             </Stack>
             <Stack spacing={5}>
