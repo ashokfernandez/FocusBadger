@@ -45,8 +45,7 @@ import {
   collectProjects,
   deleteProject as deleteProjectHelper,
   hydrateRecords,
-  renameProject as renameProjectHelper,
-  compareInsensitive
+  renameProject as renameProjectHelper
 } from "./projects.js";
 import {
   ALL_PROJECTS,
@@ -57,11 +56,7 @@ import {
 } from "./matrix.js";
 import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
-import {
-  TOOLBAR_SORTS,
-  buildProjectFilterOptions,
-  sortProjectItems
-} from "./toolbar.js";
+import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -163,6 +158,7 @@ function MatrixFilterChips({ options, active, onToggle, children }) {
               variant={selected ? "solid" : "outline"}
               colorScheme={selected ? "purple" : "gray"}
               onClick={() => onToggle(option)}
+              aria-pressed={selected}
             >
               {renderLabel(option)}
             </Button>
@@ -213,10 +209,10 @@ function MatrixSortControl({ value, onChange }) {
   );
 }
 
-function TaskToolbar({
-  projectOptions,
-  projectFilter,
-  onProjectFilterChange,
+function GlobalToolbar({
+  filterOptions,
+  activeFilters,
+  onToggleFilter,
   sortMode,
   onSortModeChange
 }) {
@@ -229,51 +225,60 @@ function TaskToolbar({
     []
   );
 
-  const getProjectLabel = useCallback((value) => {
-    if (value === ALL_PROJECTS) return "All projects";
-    if (value === UNASSIGNED_LABEL) return UNASSIGNED_LABEL;
-    return value;
-  }, []);
-
   return (
-    <Flex
-      direction={{ base: "column", md: "row" }}
-      gap={{ base: 3, md: 4 }}
-      align={{ base: "stretch", md: "flex-end" }}
+    <Box
+      bg="white"
+      borderRadius="2xl"
+      borderWidth="1px"
+      borderColor="gray.100"
+      boxShadow="md"
+      px={{ base: 4, md: 6 }}
+      py={{ base: 4, md: 5 }}
+      data-testid="workspace-toolbar"
     >
-      <FormControl maxW={{ md: "xs" }}>
-        <FormLabel fontSize="sm" color="gray.600">
-          Project filter
-        </FormLabel>
-        <Select
-          value={projectFilter}
-          onChange={(event) => onProjectFilterChange?.(event.target.value)}
-          size="sm"
-        >
-          {projectOptions.map((option) => (
-            <option key={option} value={option}>
-              {getProjectLabel(option)}
-            </option>
-          ))}
-        </Select>
-      </FormControl>
-      <FormControl maxW={{ md: "xs" }}>
-        <FormLabel fontSize="sm" color="gray.600">
-          Sort tasks
-        </FormLabel>
-        <Select
-          value={sortMode}
-          onChange={(event) => onSortModeChange?.(event.target.value)}
-          size="sm"
-        >
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </FormControl>
-    </Flex>
+      <Stack spacing={{ base: 3, md: 4 }}>
+        <Box>
+          <Heading size="sm" color="gray.700">
+            Workspace filters
+          </Heading>
+          <Text fontSize="sm" color="gray.500">
+            Choose which projects appear and how task lists are ordered.
+          </Text>
+        </Box>
+        <MatrixFilterChips options={filterOptions} active={activeFilters} onToggle={onToggleFilter}>
+          <Box
+            minW={{ base: "100%", sm: "220px" }}
+            bg="gray.50"
+            borderRadius="full"
+            px={3}
+            py={1.5}
+          >
+            <Text
+              fontSize="xs"
+              textTransform="uppercase"
+              letterSpacing="wide"
+              color="gray.500"
+              mb={1}
+            >
+              Sort projects
+            </Text>
+            <Select
+              size="sm"
+              value={sortMode}
+              onChange={(event) => onSortModeChange?.(event.target.value)}
+              bg="white"
+              data-testid="project-sort-select"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Box>
+        </MatrixFilterChips>
+      </Stack>
+    </Box>
   );
 }
 
@@ -959,7 +964,6 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
-  const [projectToolbarFilter, setProjectToolbarFilter] = useState(ALL_PROJECTS);
   const [projectSortMode, setProjectSortMode] = useState(TOOLBAR_SORTS.SCORE);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
@@ -995,20 +999,6 @@ export default function App() {
       options.push(UNASSIGNED_LABEL);
     }
     return options;
-  }, [projects]);
-
-  const projectToolbarOptions = useMemo(
-    () => buildProjectFilterOptions(projects),
-    [projects]
-  );
-
-  useEffect(() => {
-    setProjectToolbarFilter((prev) => {
-      if (prev === ALL_PROJECTS || prev === UNASSIGNED_LABEL) {
-        return prev;
-      }
-      return projects.includes(prev) ? prev : ALL_PROJECTS;
-    });
   }, [projects]);
 
   const clearPendingSave = useCallback(() => {
@@ -1078,51 +1068,10 @@ export default function App() {
     };
   }, [tasks, matrixFilters, matrixSortMode]);
 
-  const projectGroups = useMemo(() => {
-    const map = new Map();
-    projects.forEach((name) => {
-      map.set(name, []);
-    });
-
-    const unassigned = [];
-
-    tasks.forEach((task, index) => {
-      const entry = { task, index };
-      const key = task.project?.trim();
-      if (key) {
-        if (!map.has(key)) {
-          map.set(key, [entry]);
-        } else {
-          map.get(key).push(entry);
-        }
-      } else {
-        unassigned.push(entry);
-      }
-    });
-
-    const entries = Array.from(map.entries())
-      .map(([name, items]) => ({
-        name,
-        projectKey: name,
-        items: sortProjectItems(items, projectSortMode)
-      }))
-      .sort((a, b) => compareInsensitive(a.name, b.name));
-
-    const unassignedEntry = {
-      name: UNASSIGNED_LABEL,
-      projectKey: undefined,
-      items: sortProjectItems(unassigned, projectSortMode)
-    };
-
-    if (projectToolbarFilter === ALL_PROJECTS) {
-      return [...entries, unassignedEntry];
-    }
-    if (projectToolbarFilter === UNASSIGNED_LABEL) {
-      return [unassignedEntry];
-    }
-    const match = entries.find((entry) => entry.name === projectToolbarFilter);
-    return match ? [match] : [];
-  }, [tasks, projects, projectSortMode, projectToolbarFilter]);
+  const projectGroups = useMemo(
+    () => projectSectionsFrom(tasks, projects, projectSortMode, matrixFilters),
+    [tasks, projects, projectSortMode, matrixFilters]
+  );
 
   const projectUsage = useMemo(() => {
     const counts = {};
@@ -1337,10 +1286,6 @@ export default function App() {
     setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
-  const handleProjectToolbarFilterChange = useCallback((value) => {
-    setProjectToolbarFilter(value);
-  }, []);
-
   const handleProjectSortModeChange = useCallback((value) => {
     setProjectSortMode((prev) => (prev === value ? prev : value));
   }, []);
@@ -1445,21 +1390,34 @@ export default function App() {
           </Flex>
         </Flex>
 
+        <GlobalToolbar
+          filterOptions={matrixFilterOptions}
+          activeFilters={matrixFilters}
+          onToggleFilter={toggleMatrixFilter}
+          sortMode={projectSortMode}
+          onSortModeChange={handleProjectSortModeChange}
+        />
+
         <Stack spacing={6}>
           <Box>
-            <Stack spacing={2} mb={4}>
-              <Heading size="md">Priority matrix</Heading>
-              <Text fontSize="sm" color="gray.500">
-                Filter tasks and focus your time - what do you <i>really</i> need to be doing <i>right now</i>?
-              </Text>
-              <MatrixFilterChips
-                options={matrixFilterOptions}
-                active={matrixFilters}
-                onToggle={toggleMatrixFilter}
-              >
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              align={{ base: "flex-start", md: "center" }}
+              justify="space-between"
+              gap={{ base: 3, md: 4 }}
+              mb={4}
+            >
+              <Box>
+                <Heading size="md">Priority matrix</Heading>
+                <Text fontSize="sm" color="gray.500">
+                  Use the workspace filters above to zero in on the projects that matter most, then sort to
+                  decide what to tackle right now.
+                </Text>
+              </Box>
+              <Box mt={{ base: 1, md: 0 }}>
                 <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
-              </MatrixFilterChips>
-            </Stack>
+              </Box>
+            </Flex>
             <SimpleGrid columns={MATRIX_GRID_COLUMNS} spacing={6}>
               <MatrixQuadrant
                 title="Why aren't you doing this now?"
@@ -1515,17 +1473,11 @@ export default function App() {
             <Stack spacing={3} mb={4}>
               <Heading size="md">Projects</Heading>
               <Text fontSize="sm" color="gray.500">
-                Organise tasks by project
+                Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
+                section stays in sync.
               </Text>
             </Stack>
-            <TaskToolbar
-              projectOptions={projectToolbarOptions}
-              projectFilter={projectToolbarFilter}
-              onProjectFilterChange={handleProjectToolbarFilterChange}
-              sortMode={projectSortMode}
-              onSortModeChange={handleProjectSortModeChange}
-            />
-            <Stack spacing={5} mt={4}>
+            <Stack spacing={5}>
               {projectGroups.map(({ name, projectKey, items }) => (
                 <ProjectSection
                   key={projectKey ?? "__unassigned"}

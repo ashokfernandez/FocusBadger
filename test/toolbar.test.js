@@ -4,7 +4,8 @@ import {
   TOOLBAR_SORTS,
   buildProjectFilterOptions,
   compareProjectItems,
-  sortProjectItems
+  sortProjectItems,
+  projectSectionsFrom
 } from "../src/toolbar.js";
 
 describe("toolbar project filter options", () => {
@@ -14,6 +15,35 @@ describe("toolbar project filter options", () => {
     expect(options.includes("Alpha")).toBe(true);
     expect(options.includes("Beta")).toBe(true);
     expect(options.at(-1)).toBe(UNASSIGNED_LABEL);
+  });
+});
+
+describe("project sections", () => {
+  const tasks = [
+    { title: "Audit", project: "Alpha", importance: 3, urgency: 1 },
+    { title: "Prototype", project: "Beta", importance: 4, urgency: 2 },
+    { title: "Spec", project: "Alpha", importance: 5, urgency: 4 },
+    { title: "Backlog" }
+  ];
+  const projectList = ["Alpha", "Beta"];
+
+  it("returns all sections when filters include all projects", () => {
+    const sections = projectSectionsFrom(tasks, projectList, TOOLBAR_SORTS.SCORE, [ALL_PROJECTS]);
+    expect(sections.length).toBe(3);
+    expect(sections.map((section) => section.name)).toEqual(["Alpha", "Beta", UNASSIGNED_LABEL]);
+  });
+
+  it("includes only matching projects when filters are scoped", () => {
+    const sections = projectSectionsFrom(tasks, projectList, TOOLBAR_SORTS.SCORE, ["Beta"]);
+    expect(sections.length).toBe(1);
+    expect(sections[0].name).toBe("Beta");
+  });
+
+  it("includes unassigned section when requested", () => {
+    const sections = projectSectionsFrom(tasks, projectList, TOOLBAR_SORTS.TITLE, [UNASSIGNED_LABEL]);
+    expect(sections.length).toBe(1);
+    expect(sections[0].name).toBe(UNASSIGNED_LABEL);
+    expect(sections[0].items.map((entry) => entry.index)).toEqual([3]);
   });
 });
 
