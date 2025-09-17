@@ -936,7 +936,7 @@ export default function App() {
     });
 
     return groups;
-  }, [tasks]);
+  }, [tasks, matrixFilters]);
 
   const projectGroups = useMemo(() => {
     const map = new Map();
