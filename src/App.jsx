@@ -19,6 +19,7 @@ import {
 import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
 import { buildJSONExport, parseJSONInput } from "./jsonEditor.js";
 import { createTaskPayload } from "./taskFactory.js";
+import { prepareTaskTitleRename } from "./taskRename.js";
 import AddTaskModal from "./components/AddTaskModal.jsx";
 import GlobalToolbar from "./components/GlobalToolbar.jsx";
 import TaskEditor from "./components/TaskEditor.jsx";
@@ -350,6 +351,21 @@ export default function App() {
     [updateTask]
   );
 
+  const handleTaskTitleRename = useCallback(
+    (index, nextTitle) => {
+      const current = tasks[index];
+      const result = prepareTaskTitleRename(current, nextTitle);
+      if (!result.ok) {
+        return result;
+      }
+      if (result.changed) {
+        updateTask(index, () => ({ title: result.title }));
+      }
+      return { ok: true, name: result.title };
+    },
+    [tasks, updateTask]
+  );
+
   const handleProjectDrop = useCallback(
     (projectName, rawIndex) => {
       const index = Number.parseInt(rawIndex, 10);
@@ -627,20 +643,23 @@ export default function App() {
                     onEffortChange={handleEffortCommit}
                     onAddTask={addTaskDisclosure.onOpen}
                     onLoadDemo={handleLoadSample}
+                    onRenameTask={handleTaskTitleRename}
                   />
                 </Box>
               </Stack>
             </TabPanel>
             <TabPanel px={0} pt={4}>
-              <ProjectsPanel
-                projectGroups={projectGroups}
-                onManageProjects={projectManagerDisclosure.onOpen}
-                onAddTask={addTaskDisclosure.onOpen}
-                onEditTask={handleOpenEditor}
-                onToggleTask={handleToggleDone}
-                onDropProject={handleProjectDrop}
-                onEffortChange={handleEffortCommit}
-              />
+            <ProjectsPanel
+              projectGroups={projectGroups}
+              onManageProjects={projectManagerDisclosure.onOpen}
+              onAddTask={addTaskDisclosure.onOpen}
+              onRenameProject={renameProject}
+              onRenameTask={handleTaskTitleRename}
+              onEditTask={handleOpenEditor}
+              onToggleTask={handleToggleDone}
+              onDropProject={handleProjectDrop}
+              onEffortChange={handleEffortCommit}
+            />
             </TabPanel>
           </TabPanels>
         </Tabs>

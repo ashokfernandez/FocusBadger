@@ -6,6 +6,7 @@ export default function PriorityMatrixSection({
   matrix,
   sortMode,
   onEditTask,
+  onRenameTask,
   onToggleTask,
   onDropTask,
   onEffortChange,
@@ -62,6 +63,7 @@ export default function PriorityMatrixSection({
           items={matrix.today}
           highlightMode={sortMode}
           onEditTask={onEditTask}
+          onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
           onDropTask={onDropTask}
           quadrantKey="today"
@@ -74,6 +76,7 @@ export default function PriorityMatrixSection({
           items={matrix.schedule}
           highlightMode={sortMode}
           onEditTask={onEditTask}
+          onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
           emptyMessage="Plan time for these when you can."
           onDropTask={onDropTask}
@@ -87,6 +90,7 @@ export default function PriorityMatrixSection({
           items={matrix.delegate}
           highlightMode={sortMode}
           onEditTask={onEditTask}
+          onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
           emptyMessage="Nothing to hand off right now."
           onDropTask={onDropTask}
@@ -100,6 +104,7 @@ export default function PriorityMatrixSection({
           items={matrix.consider}
           highlightMode={sortMode}
           onEditTask={onEditTask}
+          onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
           emptyMessage="😌 Nothing tempting here — great job."
           onDropTask={onDropTask}

@@ -10,6 +10,7 @@ export default function MatrixQuadrant({
   items,
   emptyMessage,
   onEditTask,
+  onRenameTask,
   onToggleTask,
   onDropTask,
   quadrantKey,
@@ -85,6 +86,7 @@ export default function MatrixQuadrant({
               key={item.index}
               item={item}
               onEdit={onEditTask}
+              onRenameTitle={onRenameTask}
               onToggleDone={onToggleTask}
               onEffortChange={onEffortChange}
               highlightMode={highlightMode}

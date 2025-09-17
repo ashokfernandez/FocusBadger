@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
-import { Badge, Box, Flex, Heading, Text, Wrap, WrapItem } from "@chakra-ui/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Badge,
+  Box,
+  Flex,
+  Text,
+  Textarea,
+  Tooltip,
+  Wrap,
+  WrapItem
+} from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import EffortSlider from "../EffortSlider.jsx";
@@ -10,6 +19,7 @@ const MotionCircle = motion(Box);
 export default function TaskCard({
   item,
   onEdit,
+  onRenameTitle,
   onToggleDone,
   onEffortChange,
   highlightMode,
@@ -21,6 +31,10 @@ export default function TaskCard({
   const priority = providedPriority ?? classifyTaskPriority(task);
   const urgencyColorScheme = priority.isUrgent ? "red" : "gray";
   const importanceColorScheme = priority.isImportant ? "teal" : "gray";
+  const [titleValue, setTitleValue] = useState(task.title ?? "");
+  const [titleError, setTitleError] = useState("");
+  const [isEditingTitle, setEditingTitle] = useState(false);
+  const canRenameTitle = useMemo(() => Boolean(onRenameTitle), [onRenameTitle]);
   const hasEffort = task.effort != null;
   const projectLabel = task.project?.trim();
   const hasProject = Boolean(projectLabel);
@@ -78,6 +92,28 @@ export default function TaskCard({
     return () => clearTimeout(timeout);
   }, [isPopping]);
 
+  useEffect(() => {
+    setTitleValue(task.title ?? "");
+    setTitleError("");
+  }, [task.title]);
+
+  const handleTitleSubmit = useCallback(
+    (nextValue) => {
+      if (!canRenameTitle) return;
+      const result = onRenameTitle?.(index, nextValue);
+      if (!result?.ok) {
+        setTitleError(result?.message ?? "Unable to rename task");
+        setTitleValue(task.title ?? "");
+        setEditingTitle(false);
+        return;
+      }
+      setTitleValue(result.name ?? (nextValue ?? "").trim());
+      setTitleError("");
+      setEditingTitle(false);
+    },
+    [canRenameTitle, index, onRenameTitle, task.title]
+  );
+
   return (
     <Box
       as="li"
@@ -85,7 +121,7 @@ export default function TaskCard({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onClick={() => {
-        if (isDragging) return;
+        if (isDragging || isEditingTitle) return;
         onEdit(index);
       }}
       cursor={draggable ? "grab" : "pointer"}
@@ -153,9 +189,69 @@ export default function TaskCard({
               </Badge>
             </WrapItem>
           </Wrap>
-          <Heading as="h3" size="sm" noOfLines={2}>
-            {task.title}
-          </Heading>
+          <Box onClick={(event) => event.stopPropagation()}>
+            {isEditingTitle ? (
+              <Textarea
+                value={titleValue}
+                onChange={(event) => {
+                  setTitleValue(event.target.value);
+                  setTitleError("");
+                }}
+                autoFocus
+                variant="unstyled"
+                fontSize="sm"
+                fontWeight="semibold"
+                resize="vertical"
+                rows={Math.max(2, titleValue.split("\n").length)}
+                borderWidth="1px"
+                borderColor="purple.400"
+                borderRadius="md"
+                px={2}
+                py={1}
+                onMouseDown={(event) => event.stopPropagation()}
+                onBlur={() => handleTitleSubmit(titleValue)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setTitleValue(task.title ?? "");
+                    setTitleError("");
+                    setEditingTitle(false);
+                    return;
+                  }
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    handleTitleSubmit(titleValue);
+                  }
+                }}
+              />
+            ) : (
+              <Tooltip label={canRenameTitle ? "Rename" : undefined} placement="top" isDisabled={!canRenameTitle}>
+                <Text
+                  as="span"
+                  display="inline-block"
+                  fontSize="sm"
+                  fontWeight="semibold"
+                  lineHeight="short"
+                  wordBreak="break-word"
+                  cursor={canRenameTitle ? "text" : "pointer"}
+                  onClick={(event) => {
+                    if (!canRenameTitle) return;
+                    event.stopPropagation();
+                    setEditingTitle(true);
+                    setTitleValue(task.title ?? "");
+                    setTitleError("");
+                  }}
+                >
+                  {titleValue || "Untitled"}
+                </Text>
+              </Tooltip>
+            )}
+          </Box>
+          {titleError ? (
+            <Text fontSize="xs" color="red.500" mt={1}>
+              {titleError}
+            </Text>
+          ) : null}
           {(hasProject || hasDueDate) && (
             <Flex
               mt={1}

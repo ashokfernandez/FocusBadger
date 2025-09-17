@@ -7,6 +7,8 @@ export default function ProjectsPanel({
   projectGroups,
   onManageProjects,
   onAddTask,
+  onRenameProject,
+  onRenameTask,
   onEditTask,
   onToggleTask,
   onDropProject,
@@ -28,16 +30,18 @@ export default function ProjectsPanel({
       {projectGroups.length ? (
         <Stack spacing={PROJECT_PANEL_STACK_SPACING}>
           {projectGroups.map(({ name, projectKey, items }) => (
-            <ProjectSection
-              key={projectKey ?? "__unassigned"}
-              name={name}
-              projectKey={projectKey}
-              items={items}
-              onEditTask={onEditTask}
-              onToggleTask={onToggleTask}
-              onDropProject={onDropProject}
-              onEffortChange={onEffortChange}
-            />
+          <ProjectSection
+            key={projectKey ?? "__unassigned"}
+            name={name}
+            projectKey={projectKey}
+            items={items}
+            onRenameProject={onRenameProject}
+            onRenameTask={onRenameTask}
+            onEditTask={onEditTask}
+            onToggleTask={onToggleTask}
+            onDropProject={onDropProject}
+            onEffortChange={onEffortChange}
+          />
           ))}
         </Stack>
       ) : (
