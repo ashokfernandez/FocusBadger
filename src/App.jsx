@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Container, Stack, useClipboard, useDisclosure } from "@chakra-ui/react";
+import { Box, Container, Stack, Tab, TabList, TabPanel, TabPanels, Tabs, useClipboard, useDisclosure } from "@chakra-ui/react";
 import {
   addProject as addProjectHelper,
   buildSnapshot,
@@ -28,6 +28,7 @@ import WorkspaceHeader from "./components/WorkspaceHeader.jsx";
 import PriorityMatrixSection from "./components/PriorityMatrixSection.jsx";
 import ProjectsPanel from "./components/ProjectsPanel.jsx";
 import AssistantWorkflowModal from "./components/AssistantWorkflowModal.jsx";
+import MatrixSortControl from "./components/MatrixSortControl.jsx";
 const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
 
 export default function App() {
@@ -36,7 +37,7 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
-  const [projectSortMode, setProjectSortMode] = useState(TOOLBAR_SORTS.SCORE);
+  const projectSortMode = TOOLBAR_SORTS.SCORE;
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
@@ -51,6 +52,7 @@ export default function App() {
   const [jsonParsed, setJsonParsed] = useState(null);
   const [isJsonSaving, setIsJsonSaving] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(false);
+  const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
@@ -391,10 +393,6 @@ export default function App() {
     setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
-  const handleProjectSortModeChange = useCallback((value) => {
-    setProjectSortMode((prev) => (prev === value ? prev : value));
-  }, []);
-
   const handleCreateTask = useCallback(
     (draft) => {
       const result = createTaskPayload(draft);
@@ -590,32 +588,62 @@ export default function App() {
           saveState={saveState}
           onSave={handleSaveFile}
         />
-        <GlobalToolbar
-          filterOptions={matrixFilterOptions}
-          activeFilters={matrixFilters}
-          onToggleFilter={toggleMatrixFilter}
-          sortMode={projectSortMode}
-          onSortModeChange={handleProjectSortModeChange}
-        />
-        <Stack spacing={6}>
-          <PriorityMatrixSection
-            matrix={matrix}
-            sortMode={matrixSortMode}
-            onSortModeChange={handleMatrixSortChange}
-            onEditTask={handleOpenEditor}
-            onToggleTask={handleToggleDone}
-            onDropTask={handleMatrixDrop}
-            onEffortChange={handleEffortCommit}
-          />
-          <ProjectsPanel
-            projectGroups={projectGroups}
-            onManageProjects={projectManagerDisclosure.onOpen}
-            onEditTask={handleOpenEditor}
-            onToggleTask={handleToggleDone}
-            onDropProject={handleProjectDrop}
-            onEffortChange={handleEffortCommit}
-          />
-        </Stack>
+        <Tabs
+          index={workspaceTabIndex}
+          onChange={setWorkspaceTabIndex}
+          variant="enclosed"
+          colorScheme="purple"
+          isLazy
+        >
+          <TabList>
+            <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
+              Priority
+            </Tab>
+            <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
+              Projects
+            </Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel px={0} pt={4} pb={0}>
+              <Stack spacing={4}>
+                <GlobalToolbar
+                  filterOptions={matrixFilterOptions}
+                  activeFilters={matrixFilters}
+                  onToggleFilter={toggleMatrixFilter}
+                >
+                  <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
+                </GlobalToolbar>
+                <Box
+                  maxH={{ base: "none", lg: "70vh" }}
+                  overflowY={{ base: "visible", lg: "auto" }}
+                  pr={{ lg: 2 }}
+                >
+                  <PriorityMatrixSection
+                    matrix={matrix}
+                    sortMode={matrixSortMode}
+                    onEditTask={handleOpenEditor}
+                    onToggleTask={handleToggleDone}
+                    onDropTask={handleMatrixDrop}
+                    onEffortChange={handleEffortCommit}
+                    onAddTask={addTaskDisclosure.onOpen}
+                    onLoadDemo={handleLoadSample}
+                  />
+                </Box>
+              </Stack>
+            </TabPanel>
+            <TabPanel px={0} pt={4}>
+              <ProjectsPanel
+                projectGroups={projectGroups}
+                onManageProjects={projectManagerDisclosure.onOpen}
+                onAddTask={addTaskDisclosure.onOpen}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                onDropProject={handleProjectDrop}
+                onEffortChange={handleEffortCommit}
+              />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </Stack>
       <ProjectManagerModal
         isOpen={projectManagerDisclosure.isOpen}
