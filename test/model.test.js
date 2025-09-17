@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "./test-utils.js";
 import { score, bucket } from "../src/model.js";
 
 describe("score", () => {
