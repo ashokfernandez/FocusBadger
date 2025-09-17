@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { Box, Flex, Heading, HStack, Tag, Text } from "@chakra-ui/react";
+import { Box, Flex, Heading, Tag, Text, Wrap, WrapItem } from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import EffortSlider from "../EffortSlider.jsx";
-import { score } from "../model.js";
+import { classifyTaskPriority } from "../matrix.js";
 
 const MotionCircle = motion(Box);
 
 export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, draggable = false }) {
-  const { task, index } = item;
+  const { task, index, priority: providedPriority } = item;
   const [isPopping, setPopping] = useState(false);
   const [isDragging, setDragging] = useState(false);
+  const priority = providedPriority ?? classifyTaskPriority(task);
+  const urgencyColorScheme = priority.isUrgent ? "red" : "gray";
+  const importanceColorScheme = priority.isImportant ? "teal" : "gray";
 
   const handleEffortUpdate = useCallback(
     (value) => {
@@ -61,19 +64,21 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       cursor={draggable ? "grab" : "pointer"}
       borderWidth="1px"
       borderRadius="xl"
-      p={4}
+      p={3.5}
       bg={task.done ? "gray.100" : "white"}
       boxShadow={isDragging ? "lg" : "sm"}
       transition="all 0.15s ease"
       _hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
       display="flex"
       flexDirection="column"
-      gap={3}
+      gap={2.5}
     >
-      <Flex align="center" gap={3}>
+      <Flex align="flex-start" gap={3}>
         <MotionCircle
-          w={8}
-          h={8}
+          boxSize={8}
+          minW={8}
+          minH={8}
+          flexShrink={0}
           borderRadius="full"
           borderWidth="2px"
           borderColor={task.done ? "green.400" : "gray.300"}
@@ -91,11 +96,11 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
         >
           {task.done ? <CheckIcon w={3} h={3} /> : null}
         </MotionCircle>
-        <Box>
-          <Heading as="h3" size="sm">
+        <Box flex="1" minW={0}>
+          <Heading as="h3" size="xs" noOfLines={2}>
             {task.title}
           </Heading>
-          <Text fontSize="sm" color="gray.500">
+          <Text fontSize="xs" color="gray.500" noOfLines={2}>
             {task.notes ? task.notes : "Click to edit details"}
           </Text>
         </Box>
@@ -108,11 +113,32 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       >
         <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
       </Box>
-      <HStack spacing={2} flexWrap="wrap">
-        {task.project ? <Tag colorScheme="purple">{task.project}</Tag> : null}
-        {task.due ? <Tag colorScheme="orange">Due {task.due}</Tag> : null}
-        <Tag colorScheme="blue">Score {score(task)}</Tag>
-      </HStack>
+      <Wrap spacing={1.5} shouldWrapChildren>
+        <WrapItem>
+          <Tag size="sm" variant="subtle" colorScheme={urgencyColorScheme}>
+            {priority.urgencyLabel}
+          </Tag>
+        </WrapItem>
+        <WrapItem>
+          <Tag size="sm" variant="subtle" colorScheme={importanceColorScheme}>
+            {priority.importanceLabel}
+          </Tag>
+        </WrapItem>
+        {task.project ? (
+          <WrapItem>
+            <Tag size="sm" variant="subtle" colorScheme="purple">
+              {task.project}
+            </Tag>
+          </WrapItem>
+        ) : null}
+        {task.due ? (
+          <WrapItem>
+            <Tag size="sm" variant="subtle" colorScheme="orange">
+              Due {task.due}
+            </Tag>
+          </WrapItem>
+        ) : null}
+      </Wrap>
     </Box>
   );
 }
