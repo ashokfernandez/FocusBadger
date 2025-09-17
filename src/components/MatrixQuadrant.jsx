@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { Badge, Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import { useCallback, useMemo, useState } from "react";
+import { Badge, Box, Flex, Heading, Stack, Text, useToken } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
 
 export default function MatrixQuadrant({
@@ -15,6 +15,10 @@ export default function MatrixQuadrant({
   onEffortChange
 }) {
   const [isHover, setHover] = useState(false);
+  const [accentColor, borderHighlight] = useToken(
+    "colors",
+    useMemo(() => [`${colorScheme}.50`, `${colorScheme}.300`], [colorScheme])
+  );
 
   const handleDragOver = useCallback(
     (event) => {
@@ -54,7 +58,8 @@ export default function MatrixQuadrant({
       display="flex"
       flexDirection="column"
       gap={4}
-      borderColor={isHover ? "blue.400" : "gray.100"}
+      borderColor={isHover ? borderHighlight : "gray.100"}
+      backgroundImage={isHover && accentColor ? `linear-gradient(135deg, ${accentColor}, white)` : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -73,7 +78,7 @@ export default function MatrixQuadrant({
         </Badge>
       </Flex>
       {items.length ? (
-        <Stack as="ul" spacing={3}>
+        <Stack as="ul" spacing={2.5}>
           {items.map((item) => (
             <TaskCard
               key={item.index}

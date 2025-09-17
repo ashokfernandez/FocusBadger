@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { Box, Flex, Heading, HStack, Tag, Text } from "@chakra-ui/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, Flex, HStack, Stack, Tag, Text } from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import EffortSlider from "../EffortSlider.jsx";
-import { score } from "../model.js";
+import { getImportanceStatus, getUrgencyStatus } from "../utils/prioritization.js";
 
 const MotionCircle = motion(Box);
 
@@ -11,6 +11,9 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
   const { task, index } = item;
   const [isPopping, setPopping] = useState(false);
   const [isDragging, setDragging] = useState(false);
+
+  const urgencyChip = useMemo(() => getUrgencyStatus(task), [task]);
+  const importanceChip = useMemo(() => getImportanceStatus(task), [task]);
 
   const handleEffortUpdate = useCallback(
     (value) => {
@@ -61,16 +64,16 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       cursor={draggable ? "grab" : "pointer"}
       borderWidth="1px"
       borderRadius="xl"
-      p={4}
-      bg={task.done ? "gray.100" : "white"}
-      boxShadow={isDragging ? "lg" : "sm"}
+      p={3.5}
+      bg={task.done ? "gray.50" : "white"}
+      boxShadow={isDragging ? "xl" : "md"}
       transition="all 0.15s ease"
-      _hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
+      _hover={{ boxShadow: "xl", transform: "translateY(-2px)", borderColor: "blue.200" }}
       display="flex"
       flexDirection="column"
       gap={3}
     >
-      <Flex align="center" gap={3}>
+      <Flex align="flex-start" gap={3}>
         <MotionCircle
           w={8}
           h={8}
@@ -88,17 +91,40 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
           whileTap={{ scale: 0.9 }}
           animate={isPopping ? { scale: [1, 1.2, 1], rotate: [0, -5, 5, 0] } : {}}
           transition={{ duration: 0.25, ease: "easeOut" }}
+          flexShrink={0}
         >
           {task.done ? <CheckIcon w={3} h={3} /> : null}
         </MotionCircle>
-        <Box>
-          <Heading as="h3" size="sm">
+        <Stack spacing={2} flex="1" minWidth={0} pt={0.5}>
+          <Text fontSize="sm" fontWeight="semibold" noOfLines={2}>
             {task.title}
-          </Heading>
-          <Text fontSize="sm" color="gray.500">
-            {task.notes ? task.notes : "Click to edit details"}
           </Text>
-        </Box>
+          <Text fontSize="xs" color="gray.500" noOfLines={2}>
+            {task.notes ? task.notes : "Add more context to keep future you on track."}
+          </Text>
+          <HStack spacing={2} flexWrap="wrap">
+            {urgencyChip ? (
+              <Tag size="sm" variant="subtle" colorScheme={urgencyChip.colorScheme}>
+                {urgencyChip.label}
+              </Tag>
+            ) : null}
+            {importanceChip ? (
+              <Tag size="sm" variant="subtle" colorScheme={importanceChip.colorScheme}>
+                {importanceChip.label}
+              </Tag>
+            ) : null}
+            {task.project ? (
+              <Tag size="sm" variant="subtle" colorScheme="purple">
+                {task.project}
+              </Tag>
+            ) : null}
+            {task.due ? (
+              <Tag size="sm" variant="subtle" colorScheme="orange">
+                Due {task.due}
+              </Tag>
+            ) : null}
+          </HStack>
+        </Stack>
       </Flex>
       <Box
         onClick={(event) => event.stopPropagation()}
@@ -108,11 +134,6 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       >
         <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
       </Box>
-      <HStack spacing={2} flexWrap="wrap">
-        {task.project ? <Tag colorScheme="purple">{task.project}</Tag> : null}
-        {task.due ? <Tag colorScheme="orange">Due {task.due}</Tag> : null}
-        <Tag colorScheme="blue">Score {score(task)}</Tag>
-      </HStack>
     </Box>
   );
 }
