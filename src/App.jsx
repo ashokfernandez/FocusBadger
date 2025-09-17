@@ -1278,7 +1278,7 @@ export default function App() {
         <Stack spacing={6}>
           <Box>
             <Stack spacing={2} mb={4}>
-              <Heading size="md">Eisenhower matrix</Heading>
+              <Heading size="md">Priority matrix</Heading>
               <Text fontSize="sm" color="gray.500">
                 Urgency is influenced by due dates and explicit urgency scores; importance relies on
                 the importance score. Everything here stays synced with the project lists below.
