@@ -57,6 +57,11 @@ import {
 } from "./matrix.js";
 import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
+import {
+  TOOLBAR_SORTS,
+  buildProjectFilterOptions,
+  sortProjectItems
+} from "./toolbar.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -205,6 +210,70 @@ function MatrixSortControl({ value, onChange }) {
         })}
       </ButtonGroup>
     </HStack>
+  );
+}
+
+function TaskToolbar({
+  projectOptions,
+  projectFilter,
+  onProjectFilterChange,
+  sortMode,
+  onSortModeChange
+}) {
+  const sortOptions = useMemo(
+    () => [
+      { value: TOOLBAR_SORTS.SCORE, label: "Score (highest first)" },
+      { value: TOOLBAR_SORTS.DUE_DATE, label: "Due date (earliest)" },
+      { value: TOOLBAR_SORTS.TITLE, label: "Title (A–Z)" }
+    ],
+    []
+  );
+
+  const getProjectLabel = useCallback((value) => {
+    if (value === ALL_PROJECTS) return "All projects";
+    if (value === UNASSIGNED_LABEL) return UNASSIGNED_LABEL;
+    return value;
+  }, []);
+
+  return (
+    <Flex
+      direction={{ base: "column", md: "row" }}
+      gap={{ base: 3, md: 4 }}
+      align={{ base: "stretch", md: "flex-end" }}
+    >
+      <FormControl maxW={{ md: "xs" }}>
+        <FormLabel fontSize="sm" color="gray.600">
+          Project filter
+        </FormLabel>
+        <Select
+          value={projectFilter}
+          onChange={(event) => onProjectFilterChange?.(event.target.value)}
+          size="sm"
+        >
+          {projectOptions.map((option) => (
+            <option key={option} value={option}>
+              {getProjectLabel(option)}
+            </option>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl maxW={{ md: "xs" }}>
+        <FormLabel fontSize="sm" color="gray.600">
+          Sort tasks
+        </FormLabel>
+        <Select
+          value={sortMode}
+          onChange={(event) => onSortModeChange?.(event.target.value)}
+          size="sm"
+        >
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+      </FormControl>
+    </Flex>
   );
 }
 
@@ -890,6 +959,8 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
+  const [projectToolbarFilter, setProjectToolbarFilter] = useState(ALL_PROJECTS);
+  const [projectSortMode, setProjectSortMode] = useState(TOOLBAR_SORTS.SCORE);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
@@ -924,6 +995,20 @@ export default function App() {
       options.push(UNASSIGNED_LABEL);
     }
     return options;
+  }, [projects]);
+
+  const projectToolbarOptions = useMemo(
+    () => buildProjectFilterOptions(projects),
+    [projects]
+  );
+
+  useEffect(() => {
+    setProjectToolbarFilter((prev) => {
+      if (prev === ALL_PROJECTS || prev === UNASSIGNED_LABEL) {
+        return prev;
+      }
+      return projects.includes(prev) ? prev : ALL_PROJECTS;
+    });
   }, [projects]);
 
   const clearPendingSave = useCallback(() => {
@@ -1001,16 +1086,6 @@ export default function App() {
 
     const unassigned = [];
 
-    const sortItems = (items) =>
-      items.slice().sort((a, b) => {
-        if (a.task.done !== b.task.done) {
-          return a.task.done ? 1 : -1;
-        }
-        const scoreDiff = score(b.task) - score(a.task);
-        if (scoreDiff !== 0) return scoreDiff;
-        return a.task.title.localeCompare(b.task.title);
-      });
-
     tasks.forEach((task, index) => {
       const entry = { task, index };
       const key = task.project?.trim();
@@ -1026,17 +1101,28 @@ export default function App() {
     });
 
     const entries = Array.from(map.entries())
-      .map(([name, items]) => ({ name, projectKey: name, items: sortItems(items) }))
+      .map(([name, items]) => ({
+        name,
+        projectKey: name,
+        items: sortProjectItems(items, projectSortMode)
+      }))
       .sort((a, b) => compareInsensitive(a.name, b.name));
 
-    entries.push({
+    const unassignedEntry = {
       name: UNASSIGNED_LABEL,
       projectKey: undefined,
-      items: sortItems(unassigned)
-    });
+      items: sortProjectItems(unassigned, projectSortMode)
+    };
 
-    return entries;
-  }, [tasks, projects]);
+    if (projectToolbarFilter === ALL_PROJECTS) {
+      return [...entries, unassignedEntry];
+    }
+    if (projectToolbarFilter === UNASSIGNED_LABEL) {
+      return [unassignedEntry];
+    }
+    const match = entries.find((entry) => entry.name === projectToolbarFilter);
+    return match ? [match] : [];
+  }, [tasks, projects, projectSortMode, projectToolbarFilter]);
 
   const projectUsage = useMemo(() => {
     const counts = {};
@@ -1251,6 +1337,14 @@ export default function App() {
     setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
+  const handleProjectToolbarFilterChange = useCallback((value) => {
+    setProjectToolbarFilter(value);
+  }, []);
+
+  const handleProjectSortModeChange = useCallback((value) => {
+    setProjectSortMode((prev) => (prev === value ? prev : value));
+  }, []);
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -1424,7 +1518,14 @@ export default function App() {
                 Organise tasks by project
               </Text>
             </Stack>
-            <Stack spacing={5}>
+            <TaskToolbar
+              projectOptions={projectToolbarOptions}
+              projectFilter={projectToolbarFilter}
+              onProjectFilterChange={handleProjectToolbarFilterChange}
+              sortMode={projectSortMode}
+              onSortModeChange={handleProjectSortModeChange}
+            />
+            <Stack spacing={5} mt={4}>
               {projectGroups.map(({ name, projectKey, items }) => (
                 <ProjectSection
                   key={projectKey ?? "__unassigned"}
