@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Container, Stack, useClipboard, useDisclosure } from "@chakra-ui/react";
-import { bucket } from "./model.js";
 import {
   addProject as addProjectHelper,
   buildSnapshot,
@@ -13,6 +12,7 @@ import {
   ALL_PROJECTS,
   UNASSIGNED_LABEL,
   MATRIX_SORTS,
+  classifyTaskPriority,
   shouldIncludeTaskInMatrix,
   sortMatrixEntries
 } from "./matrix.js";
@@ -150,24 +150,18 @@ export default function App() {
 
     tasks.forEach((task, index) => {
       if (task.done) return;
-      const rawUrgency = task.urgency;
-      const urgencyScore = rawUrgency ?? 0;
-      const importanceScore = task.importance ?? 0;
-      const dueBucket = bucket(task, now);
-      const isUrgent =
-        urgencyScore >= 3 || (rawUrgency == null && dueBucket === "Today");
-      const isImportant = importanceScore >= 3;
+      const priority = classifyTaskPriority(task, now);
 
       if (!shouldIncludeTaskInMatrix(task, matrixFilters)) return;
 
-      if (isUrgent && isImportant) {
-        groups.today.push({ task, index });
-      } else if (!isUrgent && isImportant) {
-        groups.schedule.push({ task, index });
-      } else if (isUrgent && !isImportant) {
-        groups.delegate.push({ task, index });
+      if (priority.isUrgent && priority.isImportant) {
+        groups.today.push({ task, index, priority });
+      } else if (!priority.isUrgent && priority.isImportant) {
+        groups.schedule.push({ task, index, priority });
+      } else if (priority.isUrgent && !priority.isImportant) {
+        groups.delegate.push({ task, index, priority });
       } else {
-        groups.consider.push({ task, index });
+        groups.consider.push({ task, index, priority });
       }
     });
 

@@ -15,6 +15,8 @@ export default function MatrixQuadrant({
   onEffortChange
 }) {
   const [isHover, setHover] = useState(false);
+  const baseGradient = `linear(to-br, ${colorScheme}.50, white)`;
+  const hoverGradient = `linear(to-br, ${colorScheme}.100, white)`;
 
   const handleDragOver = useCallback(
     (event) => {
@@ -48,13 +50,13 @@ export default function MatrixQuadrant({
     <Box
       borderWidth="1px"
       borderRadius="2xl"
-      bg="white"
+      bgGradient={isHover ? hoverGradient : baseGradient}
       p={5}
       boxShadow={isHover ? "xl" : "md"}
       display="flex"
       flexDirection="column"
-      gap={4}
-      borderColor={isHover ? "blue.400" : "gray.100"}
+      gap={3.5}
+      borderColor={isHover ? `${colorScheme}.300` : "gray.100"}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -73,7 +75,7 @@ export default function MatrixQuadrant({
         </Badge>
       </Flex>
       {items.length ? (
-        <Stack as="ul" spacing={3}>
+        <Stack as="ul" spacing={2.5}>
           {items.map((item) => (
             <TaskCard
               key={item.index}

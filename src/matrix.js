@@ -1,4 +1,4 @@
-import { score } from "./model.js";
+import { bucket, score } from "./model.js";
 
 export const ALL_PROJECTS = "__all__";
 export const UNASSIGNED_LABEL = "Unassigned";
@@ -42,4 +42,21 @@ export function compareMatrixEntries(a, b, sortMode = MATRIX_SORTS.SCORE) {
 
 export function sortMatrixEntries(entries, sortMode = MATRIX_SORTS.SCORE) {
   return entries.slice().sort((a, b) => compareMatrixEntries(a, b, sortMode));
+}
+
+export function classifyTaskPriority(task, now = new Date()) {
+  const rawUrgency = task?.urgency;
+  const rawImportance = task?.importance;
+  const urgencyScore = rawUrgency ?? 0;
+  const importanceScore = rawImportance ?? 0;
+  const dueBucket = bucket(task, now);
+  const isUrgent = urgencyScore >= 3 || (rawUrgency == null && dueBucket === "Today");
+  const isImportant = importanceScore >= 3;
+
+  return {
+    isUrgent,
+    isImportant,
+    urgencyLabel: isUrgent ? "Urgent" : "Can wait",
+    importanceLabel: isImportant ? "Important" : "Low priority"
+  };
 }
