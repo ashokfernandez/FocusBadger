@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Box, Container, Stack, Tab, TabList, TabPanel, TabPanels, Tabs, useClipboard, useDisclosure } from "@chakra-ui/react";
+import {
+  Box,
+  Container,
+  Flex,
+  Stack,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  useClipboard,
+  useDisclosure
+} from "@chakra-ui/react";
 import {
   addProject as addProjectHelper,
   buildSnapshot,
@@ -611,57 +623,68 @@ export default function App() {
           colorScheme="purple"
           isLazy
         >
-          <TabList>
-            <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
-              Priority
-            </Tab>
-            <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
-              Projects
-            </Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel px={0} pt={4} pb={0}>
-              <Stack spacing={4}>
-                <GlobalToolbar
-                  filterOptions={matrixFilterOptions}
-                  activeFilters={matrixFilters}
-                  onToggleFilter={toggleMatrixFilter}
-                >
-                  <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
-                </GlobalToolbar>
-                <Box
-                  maxH={{ base: "none", lg: "70vh" }}
-                  overflowY={{ base: "visible", lg: "auto" }}
-                  pr={{ lg: 2 }}
-                >
-                  <PriorityMatrixSection
-                    matrix={matrix}
-                    sortMode={matrixSortMode}
-                    onEditTask={handleOpenEditor}
-                    onToggleTask={handleToggleDone}
-                    onDropTask={handleMatrixDrop}
-                    onEffortChange={handleEffortCommit}
-                    onAddTask={addTaskDisclosure.onOpen}
-                    onLoadDemo={handleLoadSample}
-                    onRenameTask={handleTaskTitleRename}
+          <Stack spacing={4}>
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              align={{ base: "flex-start", md: "center" }}
+              justify="space-between"
+              gap={{ base: 3, md: 6 }}
+            >
+              <TabList flexWrap="wrap" columnGap={2} rowGap={2}>
+                <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
+                  Priority
+                </Tab>
+                <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
+                  Projects
+                </Tab>
+              </TabList>
+              <Box flexShrink={0} alignSelf={{ base: "flex-start", md: "center" }}>
+                <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
+              </Box>
+            </Flex>
+            <TabPanels>
+              <TabPanel px={0} pt={0} pb={0}>
+                <Stack spacing={4}>
+                  <GlobalToolbar
+                    filterOptions={matrixFilterOptions}
+                    activeFilters={matrixFilters}
+                    onToggleFilter={toggleMatrixFilter}
                   />
-                </Box>
-              </Stack>
-            </TabPanel>
-            <TabPanel px={0} pt={4}>
-            <ProjectsPanel
-              projectGroups={projectGroups}
-              onManageProjects={projectManagerDisclosure.onOpen}
-              onAddTask={addTaskDisclosure.onOpen}
-              onRenameProject={renameProject}
-              onRenameTask={handleTaskTitleRename}
-              onEditTask={handleOpenEditor}
-              onToggleTask={handleToggleDone}
-              onDropProject={handleProjectDrop}
-              onEffortChange={handleEffortCommit}
-            />
-            </TabPanel>
-          </TabPanels>
+                  <Box
+                    maxH={{ base: "none", lg: "70vh" }}
+                    overflowY={{ base: "visible", lg: "auto" }}
+                    pr={{ lg: 2 }}
+                  >
+                    <PriorityMatrixSection
+                      matrix={matrix}
+                      sortMode={matrixSortMode}
+                      onEditTask={handleOpenEditor}
+                      onToggleTask={handleToggleDone}
+                      onDropTask={handleMatrixDrop}
+                      onEffortChange={handleEffortCommit}
+                      onAddTask={addTaskDisclosure.onOpen}
+                      onLoadDemo={handleLoadSample}
+                      onRenameTask={handleTaskTitleRename}
+                    />
+                  </Box>
+                </Stack>
+              </TabPanel>
+              <TabPanel px={0} pt={0}>
+                <ProjectsPanel
+                  projectGroups={projectGroups}
+                  onManageProjects={projectManagerDisclosure.onOpen}
+                  onAddTask={addTaskDisclosure.onOpen}
+                  onRenameProject={renameProject}
+                  onRenameTask={handleTaskTitleRename}
+                  onEditTask={handleOpenEditor}
+                  onToggleTask={handleToggleDone}
+                  onDropProject={handleProjectDrop}
+                  onEffortChange={handleEffortCommit}
+                  highlightMode={matrixSortMode}
+                />
+              </TabPanel>
+            </TabPanels>
+          </Stack>
         </Tabs>
       </Stack>
       <ProjectManagerModal

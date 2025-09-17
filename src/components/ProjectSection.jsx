@@ -11,7 +11,8 @@ export default function ProjectSection({
   onEditTask,
   onToggleTask,
   onDropProject,
-  onEffortChange
+  onEffortChange,
+  highlightMode
 }) {
   const allowDrop = Boolean(onDropProject);
   const [isHover, setHover] = useState(false);
@@ -165,6 +166,7 @@ export default function ProjectSection({
               onToggleDone={onToggleTask}
               onEffortChange={onEffortChange}
               draggable={allowDrop}
+              highlightMode={highlightMode}
             />
           ))}
         </Stack>

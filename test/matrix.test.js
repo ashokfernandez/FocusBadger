@@ -3,7 +3,9 @@ import {
   ALL_PROJECTS,
   UNASSIGNED_LABEL,
   MATRIX_SORTS,
+  LOW_EFFORT_MOOD_THRESHOLD,
   compareMatrixEntries,
+  getTaskMoodHighlight,
   normalizeProjectFilterKey,
   shouldIncludeTaskInMatrix,
   sortMatrixEntries
@@ -79,5 +81,41 @@ describe("matrix sorting", () => {
 
     const diff = compareMatrixEntries(sample[0], sample[1], MATRIX_SORTS.LOW_EFFORT);
     expect(Math.sign(diff) > 0).toBe(true);
+  });
+});
+
+describe("task mood highlight", () => {
+  it("highlights only urgent and important tasks in priority mode", () => {
+    const urgentImportant = { urgency: 4, importance: 5 };
+    const lowPriority = { urgency: 1, importance: 1 };
+    const doneTask = { urgency: 5, importance: 5, done: true };
+
+    expect(getTaskMoodHighlight(urgentImportant, MATRIX_SORTS.SCORE).isPriorityHighlight).toBe(true);
+    expect(getTaskMoodHighlight(lowPriority, MATRIX_SORTS.SCORE).isPriorityHighlight).toBe(false);
+    expect(getTaskMoodHighlight(doneTask, MATRIX_SORTS.SCORE).isPriorityHighlight).toBe(false);
+  });
+
+  it("treats due-today tasks as urgent when mood is priority", () => {
+    const now = new Date("2024-01-01T08:00:00Z");
+    const dueToday = { due: "2024-01-01", importance: 4 };
+    const { isPriorityHighlight } = getTaskMoodHighlight(dueToday, MATRIX_SORTS.SCORE, { now });
+    expect(isPriorityHighlight).toBe(true);
+  });
+
+  it("highlights tasks with effort below the low effort threshold", () => {
+    const easyTask = { effort: LOW_EFFORT_MOOD_THRESHOLD, urgency: 1, importance: 1 };
+    const mediumTask = { effort: LOW_EFFORT_MOOD_THRESHOLD + 1, urgency: 4, importance: 4 };
+    const missingEffort = { urgency: 5, importance: 5 };
+
+    expect(getTaskMoodHighlight(easyTask, MATRIX_SORTS.LOW_EFFORT).isLowEffortHighlight).toBe(true);
+    expect(getTaskMoodHighlight(mediumTask, MATRIX_SORTS.LOW_EFFORT).isLowEffortHighlight).toBe(false);
+    expect(getTaskMoodHighlight(missingEffort, MATRIX_SORTS.LOW_EFFORT).isLowEffortHighlight).toBe(false);
+  });
+
+  it("does not flag highlights when no mood is selected", () => {
+    const sample = { urgency: 5, importance: 5, effort: 1 };
+    const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(sample, undefined);
+    expect(isPriorityHighlight).toBe(false);
+    expect(isLowEffortHighlight).toBe(false);
   });
 });
