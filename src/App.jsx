@@ -34,8 +34,6 @@ import { motion } from "framer-motion";
 import { parseJSONL, toJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
 
-const BUCKETS = ["Today", "This week", "Later", "No date", "Done"];
-
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return undefined;
@@ -54,19 +52,19 @@ function parseTags(value) {
 
 const MotionCircle = motion(Box);
 
-function TaskCard({ item, onEdit, onToggleDone }) {
+function TaskCard({ item, onEdit, onToggleDone, draggable = false }) {
   const { task, index } = item;
-  const [isDragging, setDragging] = useState(false);
   const [isPopping, setPopping] = useState(false);
+  const [isDragging, setDragging] = useState(false);
 
   const handleDragStart = useCallback(
     (event) => {
-      if (!event.dataTransfer) return;
+      if (!draggable || !event.dataTransfer) return;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", String(index));
       setDragging(true);
     },
-    [index]
+    [draggable, index]
   );
 
   const handleDragEnd = useCallback(() => {
@@ -91,11 +89,14 @@ function TaskCard({ item, onEdit, onToggleDone }) {
   return (
     <Box
       as="li"
-      draggable
-      onClick={() => onEdit(index)}
+      draggable={draggable}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      cursor="grab"
+      onClick={() => {
+        if (isDragging) return;
+        onEdit(index);
+      }}
+      cursor={draggable ? "grab" : "pointer"}
       borderWidth="1px"
       borderRadius="xl"
       p={4}
@@ -146,18 +147,29 @@ function TaskCard({ item, onEdit, onToggleDone }) {
   );
 }
 
-function BucketColumn({ name, items, onEditTask, onDropTask, onToggleTask }) {
+function MatrixQuadrant({
+  title,
+  subtitle,
+  colorScheme,
+  items,
+  emptyMessage,
+  onEditTask,
+  onToggleTask,
+  onDropTask,
+  quadrantKey
+}) {
   const [isHover, setHover] = useState(false);
 
   const handleDragOver = useCallback(
     (event) => {
+      if (!onDropTask) return;
       event.preventDefault();
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
       }
       if (!isHover) setHover(true);
     },
-    [isHover]
+    [isHover, onDropTask]
   );
 
   const handleDragLeave = useCallback(() => {
@@ -166,49 +178,98 @@ function BucketColumn({ name, items, onEditTask, onDropTask, onToggleTask }) {
 
   const handleDrop = useCallback(
     (event) => {
+      if (!onDropTask) return;
       event.preventDefault();
       setHover(false);
-      if (!event.dataTransfer) return;
-      onDropTask(name, event.dataTransfer.getData("text/plain"));
+      const raw = event.dataTransfer?.getData("text/plain");
+      if (!raw) return;
+      onDropTask(quadrantKey, raw);
     },
-    [name, onDropTask]
+    [onDropTask, quadrantKey]
   );
 
   return (
     <Box
       borderWidth="1px"
       borderRadius="2xl"
-      bg="gray.50"
-      minH="320px"
+      bg="white"
+      p={5}
+      boxShadow={isHover ? "xl" : "md"}
       display="flex"
       flexDirection="column"
-      boxShadow={isHover ? "xl" : "md"}
-      transition="border-color 0.15s ease, box-shadow 0.15s ease"
+      gap={4}
       borderColor={isHover ? "blue.400" : "gray.100"}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
-      <Flex align="center" justify="space-between" px={5} py={4} borderBottomWidth="1px">
+      <Flex align="flex-start" justify="space-between" gap={3}>
+        <Box>
+          <Heading size="sm">{title}</Heading>
+          {subtitle ? (
+            <Text fontSize="sm" color="gray.500">
+              {subtitle}
+            </Text>
+          ) : null}
+        </Box>
+        <Badge colorScheme={colorScheme} variant="subtle">
+          {items.length}
+        </Badge>
+      </Flex>
+      {items.length ? (
+        <Stack as="ul" spacing={3}>
+          {items.map((item) => (
+            <TaskCard
+              key={item.index}
+              item={item}
+              onEdit={onEditTask}
+              onToggleDone={onToggleTask}
+              draggable={Boolean(onDropTask)}
+            />
+          ))}
+        </Stack>
+      ) : (
+        <Flex
+          align="center"
+          justify="center"
+          py={8}
+          borderRadius="lg"
+          borderWidth="1px"
+          borderStyle="dashed"
+          borderColor="gray.200"
+          color="gray.400"
+          fontSize="sm"
+        >
+          {emptyMessage ?? "Nothing here right now."}
+        </Flex>
+      )}
+    </Box>
+  );
+}
+
+function ProjectSection({ name, items, onEditTask, onToggleTask }) {
+  return (
+    <Box borderWidth="1px" borderRadius="2xl" bg="white" boxShadow="md" p={5}>
+      <Flex align="center" justify="space-between" mb={4}>
         <Heading size="sm">{name}</Heading>
         <Badge colorScheme="gray">{items.length}</Badge>
       </Flex>
-      <Stack
-        as="ul"
-        spacing={3}
-        flex="1"
-        px={5}
-        py={4}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        onDragLeave={handleDragLeave}
-      >
-        {items.map((item) => (
-          <TaskCard
-            key={item.index}
-            item={item}
-            onEdit={onEditTask}
-            onToggleDone={onToggleTask}
-          />
-        ))}
-      </Stack>
+      {items.length ? (
+        <Stack as="ul" spacing={3}>
+          {items.map((item) => (
+            <TaskCard
+              key={item.index}
+              item={item}
+              onEdit={onEditTask}
+              onToggleDone={onToggleTask}
+            />
+          ))}
+        </Stack>
+      ) : (
+        <Text fontSize="sm" color="gray.400">
+          No tasks yet.
+        </Text>
+      )}
     </Box>
   );
 }
@@ -381,15 +442,80 @@ export default function App() {
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
 
-  const buckets = useMemo(() => {
+  const matrix = useMemo(() => {
     const now = new Date();
-    const withIndex = tasks.map((task, index) => ({ task, index }));
-    return BUCKETS.map((name) => ({
-      name,
-      items: withIndex
-        .filter(({ task }) => bucket(task, now) === name)
-        .sort((a, b) => score(b.task) - score(a.task))
-    }));
+    const groups = {
+      today: [],
+      schedule: [],
+      delegate: [],
+      consider: []
+    };
+
+    tasks.forEach((task, index) => {
+      if (task.done) return;
+      const rawUrgency = task.urgency;
+      const urgencyScore = rawUrgency ?? 0;
+      const importanceScore = task.importance ?? 0;
+      const dueBucket = bucket(task, now);
+      const isUrgent =
+        urgencyScore >= 3 || (rawUrgency == null && dueBucket === "Today");
+      const isImportant = importanceScore >= 3;
+
+      if (isUrgent && isImportant) {
+        groups.today.push({ task, index });
+      } else if (!isUrgent && isImportant) {
+        groups.schedule.push({ task, index });
+      } else if (isUrgent && !isImportant) {
+        groups.delegate.push({ task, index });
+      } else {
+        groups.consider.push({ task, index });
+      }
+    });
+
+    const sortByScore = (a, b) => {
+      const scoreDiff = score(b.task) - score(a.task);
+      if (scoreDiff !== 0) return scoreDiff;
+      return a.task.title.localeCompare(b.task.title);
+    };
+
+    Object.keys(groups).forEach((key) => {
+      groups[key].sort(sortByScore);
+    });
+
+    return groups;
+  }, [tasks]);
+
+  const projects = useMemo(() => {
+    const map = new Map();
+
+    tasks.forEach((task, index) => {
+      const key = task.project?.trim() || "No project";
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key).push({ task, index });
+    });
+
+    const sortByName = (a, b) => {
+      if (a === "No project") return 1;
+      if (b === "No project") return -1;
+      return a.localeCompare(b, undefined, { sensitivity: "base" });
+    };
+
+    const sortTasks = (items) => {
+      return items.slice().sort((a, b) => {
+        if (a.task.done !== b.task.done) {
+          return a.task.done ? 1 : -1;
+        }
+        const scoreDiff = score(b.task) - score(a.task);
+        if (scoreDiff !== 0) return scoreDiff;
+        return a.task.title.localeCompare(b.task.title);
+      });
+    };
+
+    return Array.from(map.entries())
+      .sort(([a], [b]) => sortByName(a, b))
+      .map(([name, items]) => ({ name, items: sortTasks(items) }));
   }, [tasks]);
 
   const updateTask = useCallback((index, mutator) => {
@@ -414,25 +540,6 @@ export default function App() {
     });
   }, []);
 
-  const handleDropTask = useCallback(
-    (bucketName, rawIndex) => {
-      const index = Number.parseInt(rawIndex, 10);
-      if (Number.isNaN(index)) return;
-      updateTask(index, (draft) => {
-        if (bucketName === "Done" && !draft.done) {
-          draft.done = true;
-          return true;
-        }
-        if (bucketName !== "Done" && draft.done) {
-          draft.done = false;
-          return true;
-        }
-        return false;
-      });
-    },
-    [updateTask]
-  );
-
   const handleOpenEditor = useCallback(
     (index) => {
       setEditingIndex(index);
@@ -445,6 +552,37 @@ export default function App() {
     (index) => {
       updateTask(index, (draft) => {
         draft.done = !draft.done;
+        return true;
+      });
+    },
+    [updateTask]
+  );
+
+  const handleMatrixDrop = useCallback(
+    (quadrant, rawIndex) => {
+      const index = Number.parseInt(rawIndex, 10);
+      if (Number.isNaN(index)) return;
+      updateTask(index, (draft) => {
+        switch (quadrant) {
+          case "today":
+            draft.urgency = 4;
+            draft.importance = 4;
+            break;
+          case "schedule":
+            draft.importance = 4;
+            draft.urgency = 2;
+            break;
+          case "delegate":
+            draft.urgency = 4;
+            draft.importance = 1;
+            break;
+          case "consider":
+            draft.urgency = 1;
+            draft.importance = 1;
+            break;
+          default:
+            return false;
+        }
         return true;
       });
     },
@@ -502,11 +640,13 @@ export default function App() {
 
   return (
     <Container maxW="7xl" py={10}>
-      <Stack spacing={8}>
+      <Stack spacing={10}>
         <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
           <Box>
             <Heading size="lg">TaskBadger</Heading>
-            <Text color="gray.500">Drag cards between buckets and edit details inline.</Text>
+            <Text color="gray.500">
+              Focus on what matters, then see everything in context.
+            </Text>
           </Box>
           <ButtonGroup ml={{ md: "auto" }} spacing={3}>
             <Button variant="ghost" onClick={handleLoadSample}>
@@ -518,30 +658,90 @@ export default function App() {
             </Button>
           </ButtonGroup>
         </Flex>
-        <SimpleGrid columns={{ base: 1, lg: 2, xl: 3 }} spacing={6}>
-          {buckets.slice(0, 3).map(({ name, items }) => (
-            <BucketColumn
-              key={name}
-              name={name}
-              items={items}
-              onEditTask={handleOpenEditor}
-              onDropTask={handleDropTask}
-              onToggleTask={handleToggleDone}
-            />
-          ))}
-        </SimpleGrid>
-        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-          {buckets.slice(3).map(({ name, items }) => (
-            <BucketColumn
-              key={name}
-              name={name}
-              items={items}
-              onEditTask={handleOpenEditor}
-              onDropTask={handleDropTask}
-              onToggleTask={handleToggleDone}
-            />
-          ))}
-        </SimpleGrid>
+
+        <Stack spacing={6}>
+          <Box>
+            <Stack spacing={2} mb={4}>
+              <Heading size="md">Eisenhower matrix</Heading>
+              <Text fontSize="sm" color="gray.500">
+                Urgency is influenced by due dates and explicit urgency scores; importance relies on
+                the importance score. Everything here stays synced with the project lists below.
+              </Text>
+            </Stack>
+            <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
+              <MatrixQuadrant
+                title="Today"
+                subtitle="Urgent and important"
+                colorScheme="red"
+                items={matrix.today}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                onDropTask={handleMatrixDrop}
+                quadrantKey="today"
+              />
+              <MatrixQuadrant
+                title="Schedule"
+                subtitle="Important, not urgent"
+                colorScheme="purple"
+                items={matrix.schedule}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                emptyMessage="Plan time for these when you can."
+                onDropTask={handleMatrixDrop}
+                quadrantKey="schedule"
+              />
+              <MatrixQuadrant
+                title="Delegate"
+                subtitle="Urgent, not important"
+                colorScheme="orange"
+                items={matrix.delegate}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                emptyMessage="Nothing to hand off right now."
+                onDropTask={handleMatrixDrop}
+                quadrantKey="delegate"
+              />
+              <MatrixQuadrant
+                title="Why are you considering this?"
+                subtitle="Not urgent, not important"
+                colorScheme="gray"
+                items={matrix.consider}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                emptyMessage="😌 Nothing tempting here — great job."
+                onDropTask={handleMatrixDrop}
+                quadrantKey="consider"
+              />
+            </SimpleGrid>
+          </Box>
+
+          <Box>
+            <Stack spacing={3} mb={4}>
+              <Heading size="md">Projects</Heading>
+              <Text fontSize="sm" color="gray.500">
+                Every task keeps its home project (or none). The matrix highlights the same items without
+                removing them from these lists.
+              </Text>
+            </Stack>
+            {projects.length ? (
+              <Stack spacing={5}>
+                {projects.map(({ name, items }) => (
+                  <ProjectSection
+                    key={name}
+                    name={name}
+                    items={items}
+                    onEditTask={handleOpenEditor}
+                    onToggleTask={handleToggleDone}
+                  />
+                ))}
+              </Stack>
+            ) : (
+              <Text fontSize="sm" color="gray.400">
+                No tasks loaded yet. Import or add work to get started.
+              </Text>
+            )}
+          </Box>
+        </Stack>
       </Stack>
       {editingTask ? (
         <TaskEditor
