@@ -38,10 +38,8 @@ export default function TaskEditor({
     title: task?.title ?? "",
     project: task?.project ?? "",
     due: task?.due ?? "",
-    importanceValue: task?.importance ?? undefined,
-    urgencyValue: task?.urgency ?? undefined,
-    importanceDirty: false,
-    urgencyDirty: false,
+    importance: (task?.importance ?? 0) >= 3,
+    urgency: (task?.urgency ?? 0) >= 3,
     effort: task?.effort ?? undefined,
     notes: task?.notes ?? "",
     done: Boolean(task?.done),
@@ -51,16 +49,18 @@ export default function TaskEditor({
   const [error, setError] = useState("");
   const [projectError, setProjectError] = useState("");
   const titleRef = useRef(null);
+  const importanceValueRef = useRef(task?.importance ?? undefined);
+  const urgencyValueRef = useRef(task?.urgency ?? undefined);
 
   useEffect(() => {
+    importanceValueRef.current = task?.importance ?? undefined;
+    urgencyValueRef.current = task?.urgency ?? undefined;
     setForm({
       title: task?.title ?? "",
       project: task?.project ?? "",
       due: task?.due ?? "",
-      importanceValue: task?.importance ?? undefined,
-      urgencyValue: task?.urgency ?? undefined,
-      importanceDirty: false,
-      urgencyDirty: false,
+      importance: (task?.importance ?? 0) >= 3,
+      urgency: (task?.urgency ?? 0) >= 3,
       effort: task?.effort ?? undefined,
       notes: task?.notes ?? "",
       done: Boolean(task?.done),
@@ -106,27 +106,21 @@ export default function TaskEditor({
   }, []);
 
   const handleImportanceToggle = useCallback((isChecked) => {
-    setForm((prev) => ({
-      ...prev,
-      importanceValue: isChecked
-        ? prev.importanceValue && prev.importanceValue >= 3
-          ? prev.importanceValue
-          : 5
-        : undefined,
-      importanceDirty: true
-    }));
+    setForm((prev) => ({ ...prev, importance: isChecked }));
+    if (isChecked) {
+      const current = importanceValueRef.current;
+      importanceValueRef.current =
+        typeof current === "number" && current >= 3 ? current : 5;
+    }
   }, []);
 
   const handleUrgencyToggle = useCallback((isChecked) => {
-    setForm((prev) => ({
-      ...prev,
-      urgencyValue: isChecked
-        ? prev.urgencyValue && prev.urgencyValue >= 3
-          ? prev.urgencyValue
-          : 5
-        : undefined,
-      urgencyDirty: true
-    }));
+    setForm((prev) => ({ ...prev, urgency: isChecked }));
+    if (isChecked) {
+      const current = urgencyValueRef.current;
+      urgencyValueRef.current =
+        typeof current === "number" && current >= 3 ? current : 5;
+    }
   }, []);
 
   const handleSubmit = useCallback(
@@ -150,21 +144,23 @@ export default function TaskEditor({
       } else {
         projectValue = undefined;
       }
+      const normalizePriority = (value) =>
+        typeof value === "number" && Number.isFinite(value) ? value : 5;
       const changes = {
         title,
         project: projectValue,
         due: form.due.trim() || undefined,
-        importance: form.importanceDirty
-          ? form.importanceValue ?? undefined
-          : task?.importance,
-        urgency: form.urgencyDirty ? form.urgencyValue ?? undefined : task?.urgency,
+        importance: form.importance
+          ? normalizePriority(importanceValueRef.current)
+          : undefined,
+        urgency: form.urgency ? normalizePriority(urgencyValueRef.current) : undefined,
         effort: sanitizeNumber(form.effort),
         notes: form.notes.trim() || undefined,
         done: form.done
       };
       onSave(changes);
     },
-    [form, onCreateProject, onSave]
+    [form, onCreateProject, onSave, task]
   );
 
   return (
@@ -243,7 +239,7 @@ export default function TaskEditor({
               <FormControl display="flex" alignItems="center">
                 <Switch
                   id="edit-importance-toggle"
-                  isChecked={(form.importanceValue ?? 0) >= 3}
+                  isChecked={form.importance}
                   onChange={(event) => handleImportanceToggle(event.target.checked)}
                   colorScheme="purple"
                   mr={3}
@@ -255,7 +251,7 @@ export default function TaskEditor({
               <FormControl display="flex" alignItems="center">
                 <Switch
                   id="edit-urgency-toggle"
-                  isChecked={(form.urgencyValue ?? 0) >= 3}
+                  isChecked={form.urgency}
                   onChange={(event) => handleUrgencyToggle(event.target.checked)}
                   colorScheme="orange"
                   mr={3}
