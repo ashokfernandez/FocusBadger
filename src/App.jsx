@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Children, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -51,8 +51,11 @@ import {
 import {
   ALL_PROJECTS,
   UNASSIGNED_LABEL,
-  shouldIncludeTaskInMatrix
+  MATRIX_SORTS,
+  shouldIncludeTaskInMatrix,
+  sortMatrixEntries
 } from "./matrix.js";
+import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
 
 function sanitizeNumber(value) {
@@ -135,12 +138,14 @@ function SaveStatusIndicator({ state }) {
   );
 }
 
-function MatrixFilterChips({ options, active, onToggle }) {
+function MatrixFilterChips({ options, active, onToggle, children }) {
   const renderLabel = useCallback((value) => {
     if (value === ALL_PROJECTS) return "All projects";
     if (value === UNASSIGNED_LABEL) return "Unassigned";
     return value;
   }, []);
+
+  const extraItems = useMemo(() => Children.toArray(children), [children]);
 
   return (
     <Wrap spacing={2} mt={1}>
@@ -159,14 +164,60 @@ function MatrixFilterChips({ options, active, onToggle }) {
           </WrapItem>
         );
       })}
+      {extraItems.map((child, index) => (
+        <WrapItem key={`extra-${index}`}>{child}</WrapItem>
+      ))}
     </Wrap>
   );
 }
 
-function TaskCard({ item, onEdit, onToggleDone, draggable = false }) {
+function MatrixSortControl({ value, onChange }) {
+  const options = useMemo(
+    () => [
+      { value: MATRIX_SORTS.SCORE, label: "Top priority" },
+      { value: MATRIX_SORTS.LOW_EFFORT, label: "Low effort first" }
+    ],
+    []
+  );
+
+  return (
+    <HStack spacing={2} align="center">
+      <Text fontSize="xs" textTransform="uppercase" letterSpacing="wide" color="gray.500">
+        Sort
+      </Text>
+      <ButtonGroup size="xs" isAttached variant="outline">
+        {options.map((option) => {
+          const isActive = value === option.value;
+          return (
+            <Button
+              key={option.value}
+              variant={isActive ? "solid" : "outline"}
+              colorScheme={isActive ? "purple" : "gray"}
+              onClick={() => {
+                if (isActive) return;
+                onChange(option.value);
+              }}
+              aria-pressed={isActive}
+            >
+              {option.label}
+            </Button>
+          );
+        })}
+      </ButtonGroup>
+    </HStack>
+  );
+}
+
+function TaskCard({ item, onEdit, onToggleDone, onEffortChange, draggable = false }) {
   const { task, index } = item;
   const [isPopping, setPopping] = useState(false);
   const [isDragging, setDragging] = useState(false);
+  const handleEffortUpdate = useCallback(
+    (value) => {
+      onEffortChange?.(index, value);
+    },
+    [index, onEffortChange]
+  );
 
   const handleDragStart = useCallback(
     (event) => {
@@ -249,6 +300,14 @@ function TaskCard({ item, onEdit, onToggleDone, draggable = false }) {
           </Text>
         </Box>
       </Flex>
+      <Box
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
+      </Box>
       <HStack spacing={2} flexWrap="wrap">
         {task.project ? <Tag colorScheme="purple">{task.project}</Tag> : null}
         {task.due ? <Tag colorScheme="orange">Due {task.due}</Tag> : null}
@@ -267,7 +326,8 @@ function MatrixQuadrant({
   onEditTask,
   onToggleTask,
   onDropTask,
-  quadrantKey
+  quadrantKey,
+  onEffortChange
 }) {
   const [isHover, setHover] = useState(false);
 
@@ -335,6 +395,7 @@ function MatrixQuadrant({
               item={item}
               onEdit={onEditTask}
               onToggleDone={onToggleTask}
+              onEffortChange={onEffortChange}
               draggable={Boolean(onDropTask)}
             />
           ))}
@@ -364,7 +425,8 @@ function ProjectSection({
   items,
   onEditTask,
   onToggleTask,
-  onDropProject
+  onDropProject,
+  onEffortChange
 }) {
   const allowDrop = Boolean(onDropProject);
   const [isHover, setHover] = useState(false);
@@ -421,6 +483,7 @@ function ProjectSection({
               item={item}
               onEdit={onEditTask}
               onToggleDone={onToggleTask}
+              onEffortChange={onEffortChange}
               draggable={allowDrop}
             />
           ))}
@@ -441,7 +504,7 @@ function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreatePro
     due: task?.due ?? "",
     importance: task?.importance ?? "",
     urgency: task?.urgency ?? "",
-    effort: task?.effort ?? "",
+    effort: task?.effort ?? undefined,
     tags: task?.tags ? task.tags.join(", ") : "",
     notes: task?.notes ?? "",
     done: Boolean(task?.done),
@@ -459,7 +522,7 @@ function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreatePro
       due: task?.due ?? "",
       importance: task?.importance ?? "",
       urgency: task?.urgency ?? "",
-      effort: task?.effort ?? "",
+      effort: task?.effort ?? undefined,
       tags: task?.tags ? task.tags.join(", ") : "",
       notes: task?.notes ?? "",
       done: Boolean(task?.done),
@@ -488,6 +551,10 @@ function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreatePro
   const handleNewProjectNameChange = useCallback((value) => {
     setForm((prev) => ({ ...prev, newProjectName: value }));
     setProjectError("");
+  }, []);
+
+  const handleEffortChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, effort: value }));
   }, []);
 
   const handleSubmit = useCallback(
@@ -580,7 +647,7 @@ function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreatePro
                 />
               </FormControl>
             </SimpleGrid>
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
               <FormControl>
                 <FormLabel>Importance</FormLabel>
                 <NumberInput
@@ -601,17 +668,8 @@ function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreatePro
                   <NumberInputField inputMode="numeric" />
                 </NumberInput>
               </FormControl>
-              <FormControl>
-                <FormLabel>Effort</FormLabel>
-                <NumberInput
-                  min={0}
-                  value={form.effort}
-                  onChange={(valueString) => handleChange("effort", valueString)}
-                >
-                  <NumberInputField inputMode="numeric" />
-                </NumberInput>
-              </FormControl>
             </SimpleGrid>
+            <EffortSlider value={form.effort} onChange={handleEffortChange} />
             <FormControl>
               <FormLabel>Tags (comma separated)</FormLabel>
               <Input
@@ -831,6 +889,7 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
+  const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
@@ -926,18 +985,13 @@ export default function App() {
       }
     });
 
-    const sortByScore = (a, b) => {
-      const scoreDiff = score(b.task) - score(a.task);
-      if (scoreDiff !== 0) return scoreDiff;
-      return a.task.title.localeCompare(b.task.title);
+    return {
+      today: sortMatrixEntries(groups.today, matrixSortMode),
+      schedule: sortMatrixEntries(groups.schedule, matrixSortMode),
+      delegate: sortMatrixEntries(groups.delegate, matrixSortMode),
+      consider: sortMatrixEntries(groups.consider, matrixSortMode)
     };
-
-    Object.keys(groups).forEach((key) => {
-      groups[key].sort(sortByScore);
-    });
-
-    return groups;
-  }, [tasks, matrixFilters]);
+  }, [tasks, matrixFilters, matrixSortMode]);
 
   const projectGroups = useMemo(() => {
     const map = new Map();
@@ -1168,6 +1222,17 @@ export default function App() {
     [updateTask]
   );
 
+  const handleEffortCommit = useCallback(
+    (index, value) => {
+      const clamped = Math.max(1, Math.min(10, Math.round(value)));
+      updateTask(index, (draft) => {
+        if (draft.effort === clamped) return false;
+        return { effort: clamped };
+      });
+    },
+    [updateTask]
+  );
+
   const toggleMatrixFilter = useCallback((filter) => {
     setMatrixFilters((prev) => {
       if (filter === ALL_PROJECTS) {
@@ -1180,6 +1245,10 @@ export default function App() {
         : [...withoutAll, filter];
       return next.length ? next : DEFAULT_MATRIX_FILTERS;
     });
+  }, []);
+
+  const handleMatrixSortChange = useCallback((mode) => {
+    setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
   const handleSaveEdit = useCallback(
@@ -1293,7 +1362,9 @@ export default function App() {
                 options={matrixFilterOptions}
                 active={matrixFilters}
                 onToggle={toggleMatrixFilter}
-              />
+              >
+                <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
+              </MatrixFilterChips>
             </Stack>
             <SimpleGrid columns={MATRIX_GRID_COLUMNS} spacing={6}>
               <MatrixQuadrant
@@ -1305,6 +1376,7 @@ export default function App() {
                 onToggleTask={handleToggleDone}
                 onDropTask={handleMatrixDrop}
                 quadrantKey="today"
+                onEffortChange={handleEffortCommit}
               />
               <MatrixQuadrant
                 title="When can you do this later?"
@@ -1316,6 +1388,7 @@ export default function App() {
                 emptyMessage="Plan time for these when you can."
                 onDropTask={handleMatrixDrop}
                 quadrantKey="schedule"
+                onEffortChange={handleEffortCommit}
               />
               <MatrixQuadrant
                 title="Who can help you with this?"
@@ -1327,6 +1400,7 @@ export default function App() {
                 emptyMessage="Nothing to hand off right now."
                 onDropTask={handleMatrixDrop}
                 quadrantKey="delegate"
+                onEffortChange={handleEffortCommit}
               />
               <MatrixQuadrant
                 title="Why are you considering this?"
@@ -1338,6 +1412,7 @@ export default function App() {
                 emptyMessage="😌 Nothing tempting here — great job."
                 onDropTask={handleMatrixDrop}
                 quadrantKey="consider"
+                onEffortChange={handleEffortCommit}
               />
             </SimpleGrid>
           </Box>
@@ -1359,6 +1434,7 @@ export default function App() {
                   onEditTask={handleOpenEditor}
                   onToggleTask={handleToggleDone}
                   onDropProject={handleProjectDrop}
+                  onEffortChange={handleEffortCommit}
                 />
               ))}
             </Stack>
