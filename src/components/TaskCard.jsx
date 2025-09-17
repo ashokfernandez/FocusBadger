@@ -13,6 +13,7 @@ import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import EffortSlider from "../EffortSlider.jsx";
 import { MATRIX_SORTS, classifyTaskPriority, getTaskMoodHighlight } from "../matrix.js";
+import { colors } from "../theme/tokens.js";
 
 const MotionCircle = motion(Box);
 
@@ -45,17 +46,19 @@ export default function TaskCard({
     taskIndex: index
   });
   const highlightBorderColor = isPriorityHighlight
-    ? "purple.400"
+    ? colors.borderPriority
     : isLowEffortHighlight
-      ? "green.300"
-      : "gray.200";
+      ? colors.borderLowEffort
+      : task.done
+        ? colors.borderDone
+        : colors.borderSubtle;
   const highlightBackground = task.done
-    ? "gray.100"
+    ? colors.surfaceDone
     : isPriorityHighlight
-      ? "white"
+      ? colors.surfacePriority
       : isLowEffortHighlight
-        ? "green.50"
-        : "white";
+        ? colors.surfaceLowEffort
+        : colors.surfaceBase;
 
   const handleEffortUpdate = useCallback(
     (value) => {
@@ -147,12 +150,12 @@ export default function TaskCard({
           flexShrink={0}
           borderRadius="full"
           borderWidth="2px"
-          borderColor={task.done ? "green.400" : "gray.300"}
-          bg={task.done ? "green.400" : "white"}
+          borderColor={task.done ? colors.taskCheckboxBorderChecked : colors.taskCheckboxBorder}
+          bg={task.done ? colors.taskCheckboxBgChecked : colors.taskCheckboxBg}
           display="flex"
           alignItems="center"
           justifyContent="center"
-          color="white"
+          color={colors.taskCheckboxIcon}
           role="button"
           aria-pressed={task.done}
           onClick={handleToggle}
@@ -163,7 +166,7 @@ export default function TaskCard({
           {task.done ? <CheckIcon w={3} h={3} /> : null}
         </MotionCircle>
         <Box flex="1" minW={0}>
-          <Wrap spacing={1} shouldWrapChildren mb={2}>
+          <Wrap spacing={1} shouldWrapChildren mb={2} color={colors.textMuted}>
             <WrapItem>
               <Badge
                 colorScheme={urgencyColorScheme}
@@ -206,7 +209,7 @@ export default function TaskCard({
                 resize="vertical"
                 rows={Math.max(2, titleValue.split("\n").length)}
                 borderWidth="1px"
-                borderColor="purple.400"
+                borderColor={colors.interactiveFocus}
                 borderRadius="md"
                 px={2}
                 py={1}
@@ -250,7 +253,7 @@ export default function TaskCard({
             )}
           </Box>
           {titleError ? (
-            <Text fontSize="xs" color="red.500" mt={1}>
+            <Text fontSize="xs" color={colors.textError} mt={1}>
               {titleError}
             </Text>
           ) : null}
@@ -261,20 +264,20 @@ export default function TaskCard({
               align="center"
               wrap="wrap"
               fontSize="xs"
-              color="gray.500"
+              color={colors.textMuted}
             >
               {hasProject ? (
-                <Text fontWeight="semibold" color="purple.500" noOfLines={1}>
+                <Text fontWeight="semibold" color={colors.textProject} noOfLines={1}>
                   {projectLabel}
                 </Text>
               ) : null}
               {hasProject && hasDueDate ? (
-                <Box as="span" color="gray.400">
+                <Box as="span" color={colors.textSubtle}>
                   •
                 </Box>
               ) : null}
               {hasDueDate ? (
-                <Text color="orange.500" noOfLines={1}>
+                <Text color={colors.textWarning} noOfLines={1}>
                   Due {task.due}
                 </Text>
               ) : null}

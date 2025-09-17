@@ -8,6 +8,7 @@ import {
   MIN_EFFORT,
   MAX_EFFORT
 } from "./effortMath.js";
+import { colors } from "./theme/tokens.js";
 
 export function EffortSlider({
   value,
@@ -107,7 +108,7 @@ export function EffortSlider({
       }}
     >
       <HStack justify="space-between" mb={isCompact ? 1 : 2} spacing={3} align="center">
-        <Text fontSize={fontSize} fontWeight="medium" color="gray.600">
+        <Text fontSize={fontSize} fontWeight="medium" color={colors.textMuted}>
           Effort
         </Text>
         <HStack spacing={2} align="center">
@@ -169,20 +170,20 @@ export function EffortSlider({
             setIsExpanded(false);
           }}
         >
-          <SliderTrack bg="gray.100" borderRadius="full">
+          <SliderTrack bg={colors.surfaceSubtle} borderRadius="full">
             <SliderFilledTrack
               bgGradient={hasDefinedValue ? "linear(to-r, green.400, yellow.400, orange.400, red.500)" : undefined}
-              bg={hasDefinedValue ? undefined : "gray.300"}
+              bg={hasDefinedValue ? undefined : colors.borderDefault}
             />
           </SliderTrack>
-          <SliderThumb boxSize={size === "sm" ? 5 : 6} bg={hasDefinedValue ? "purple.500" : "gray.400"} boxShadow="md">
+          <SliderThumb boxSize={size === "sm" ? 5 : 6} bg={hasDefinedValue ? colors.interactiveAccent : colors.borderEmphasis} boxShadow="md">
             <Box color="white" fontWeight="semibold" fontSize={fontSize}>
               {internalValue}
             </Box>
           </SliderThumb>
         </Slider>
         {showDescriptor ? (
-          <Text mt={isCompact ? 1.5 : 2} fontSize="xs" color="gray.500">
+          <Text mt={isCompact ? 1.5 : 2} fontSize="xs" color={colors.textSubtle}>
             {descriptor.label}
           </Text>
         ) : null}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Box, Flex, SimpleGrid, Text, Textarea, Tooltip } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
 import { getProjectMoodHighlight } from "../matrix.js";
+import { colors } from "../theme/tokens.js";
 
 export default function ProjectSection({
   name,
@@ -30,15 +31,15 @@ export default function ProjectSection({
     [items, highlightMode, highlightedTaskIndexes]
   );
   const projectBorderColor = hasPriorityHighlight
-    ? "red.400"
+    ? colors.borderPriority
     : hasLowEffortHighlight
-      ? "green.300"
-      : "gray.100";
+      ? colors.borderLowEffort
+      : colors.borderSubtle;
   const projectBackground = hasPriorityHighlight
-    ? "red.50"
+    ? colors.surfacePriority
     : hasLowEffortHighlight
-      ? "green.50"
-      : "white";
+      ? colors.surfaceLowEffort
+      : colors.surfaceBase;
   const projectShadow = hasPriorityHighlight ? "xl" : hasLowEffortHighlight ? "lg" : "md";
 
   useEffect(() => {
@@ -101,10 +102,10 @@ export default function ProjectSection({
     <Box
       borderWidth="1px"
       borderRadius="2xl"
-      bg={allowDrop && isHover ? "purple.50" : projectBackground}
+      bg={allowDrop && isHover ? colors.surfaceDropzone : projectBackground}
       p={5}
       boxShadow={allowDrop && isHover ? "xl" : projectShadow}
-      borderColor={allowDrop && isHover ? "purple.400" : projectBorderColor}
+      borderColor={allowDrop && isHover ? colors.borderDropzone : projectBorderColor}
       borderStyle={allowDrop ? "dashed" : "solid"}
       onDragOver={allowDrop ? handleDragOver : undefined}
       onDragLeave={allowDrop ? handleDragLeave : undefined}
@@ -127,7 +128,7 @@ export default function ProjectSection({
               resize="vertical"
               rows={Math.max(2, value.split("\n").length)}
               borderWidth="1px"
-              borderColor="purple.400"
+              borderColor={colors.interactiveFocus}
               borderRadius="md"
               px={3}
               py={2}
@@ -155,7 +156,7 @@ export default function ProjectSection({
                 fontWeight="semibold"
                 wordBreak="break-word"
                 cursor={canRename ? "text" : "default"}
-                color={canRename ? "purple.600" : "inherit"}
+                color={canRename ? colors.textAccent : undefined}
                 onClick={() => {
                   if (!canRename) return;
                   setEditing(true);
@@ -171,7 +172,7 @@ export default function ProjectSection({
         <Badge colorScheme="gray">{items.length}</Badge>
       </Flex>
       {error ? (
-        <Text fontSize="xs" color="red.500" mb={3}>
+        <Text fontSize="xs" color={colors.textError} mb={3}>
           {error}
         </Text>
       ) : null}
@@ -199,7 +200,7 @@ export default function ProjectSection({
           ))}
         </SimpleGrid>
       ) : (
-        <Text fontSize="sm" color="gray.400">
+        <Text fontSize="sm" color={colors.projectsEmptyText}>
           {projectKey ? `Drag tasks here to assign to ${name}.` : "Drag tasks here to keep tasks unassigned."}
         </Text>
       )}

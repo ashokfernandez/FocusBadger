@@ -1,15 +1,24 @@
 # FocusBadger
 
-[Jump straight to the live board](https://ashokfernandez.github.io/FocusBadger/)
+[Jump straight to the live board](https://focusbadger.github.io/FocusBadger/)
 
-FocusBadger is the cheeky little strategist that keeps your todo list honest. Drop in every task that’s fighting for your attention and it will whisper back a plan: what’s urgent, what’s truly important, how heavy each lift will be, and which move fits your current mood. It’s your friendly accomplice for building momentum, not another dashboard nagging you about overdue chores.
+FocusBadger is the cheeky little strategist that keeps your todo list honest. Drop in every task fighting for attention and it whispers back a plan: what’s urgent, what’s truly important, how heavy each lift will be, and which move fits your current mood. It’s your friendly accomplice for building momentum, not another dashboard nagging you about overdue chores.
 
-## How it creates focus
+## Why FocusBadger?
 
 - **See the whole story.** Each card shows urgency, importance, and effort so you can quickly decide which bets matter now and which can wait.
-- **Match the moment.** Flip the mood switch when you want either quick wins or deep work—the board spotlights the tasks that fit the energy you have.
-- **Stay flexible.** Today, This Week, and Later lanes keep long-term strategy in view while protecting space for what’s on fire.
-- **Own your plan.** Everything lives in approachable JSONL, perfect for version control, automation, or looping in an AI co-pilot.
+- **Match the moment.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan, then flip the mood switch for quick wins or deep work.
+- **Stay grounded.** Gather work, home, and side quests into one calm view so nothing slips.
+- **Own your data.** Everything lives in approachable JSONL that plays nicely with Git, scripts, and AI helpers.
+
+## What you can do
+
+- Capture tasks instantly and group them by project without touching a database.
+- Sort by priority or due date, then zoom into the Eisenhower-style matrix to rebalance your workload.
+- Use the assistant workflow to hand tasks to an LLM for batch edits, summaries, or brainstorms.
+- Review progress at the end of the week with filters that spotlight wins and upcoming risks.
+
+Curious how the task file is structured? Peek at the [data guide](DATA.md).
 
 ## A week with FocusBadger
 
@@ -19,22 +28,20 @@ FocusBadger is the cheeky little strategist that keeps your todo list honest. Dr
 4. Share the board with an AI assistant for fast edits or summaries using the workflow in [AI_ASSIST.md](AI_ASSIST.md).
 5. Celebrate wins and capture learnings before rolling unfinished work forward.
 
-Want to peek under the hood? The full task format is explained in the [data guide](DATA.md).
-
 ## Make it your own
 
-FocusBadger ships as a static site, so you can:
+FocusBadger ships as a static site, so you can run it locally or host it anywhere. Because your tasks live in a human-friendly JSONL file:
 
-- Host it anywhere with a simple file upload.
-- Track history in Git or your favorite sync service.
-- Collaborate with teammates by editing the shared JSONL file or the AI workflow.
+- You can version everything with Git or sync it through your own cloud drive.
+- Edits stay transparent—line-by-line changes make reviews and automation simple.
+- Collaborators and AI co-pilots can safely add, update, or summarise tasks using the same prompts.
 
 ## Getting started locally
 
 1. Install dependencies with `npm install`.
-2. Launch the dev server with `npm run dev` and open the provided URL.
-3. Run `npm test` to confirm everything behaves.
-4. Open the Assistant workflow modal to copy the AI prompt and hand the board to your co-pilot.
+2. Start the dev server with `npm run dev` and open the provided URL.
+3. Run `npm test` to make sure everything still behaves.
+4. Open the Assistant workflow modal to copy the AI prompt and share data with your co-pilot.
 
 ## Go deeper
 

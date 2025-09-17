@@ -79,6 +79,6 @@ describe("responsive layout", () => {
     const labels = ASSISTANT_WORKFLOW_TAB_CONFIG.map((option) => option.label);
     expect(labels).toEqual(["Copy for assistant", "Apply assistant output"]);
     expect(ASSISTANT_WORKFLOW_MODAL_SIZE).toBe("4xl");
-    expect(ASSISTANT_WORKFLOW_TEXT_COLOR).toBe("gray.600");
+    expect(ASSISTANT_WORKFLOW_TEXT_COLOR).toBe("assistant.text");
   });
 });

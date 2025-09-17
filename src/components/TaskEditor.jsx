@@ -25,6 +25,7 @@ import { CheckIcon } from "@chakra-ui/icons";
 import EffortSlider from "../EffortSlider.jsx";
 import { sanitizeNumber } from "../utils/taskFields.js";
 import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
+import { colors } from "../theme/tokens.js";
 
 export default function TaskEditor({
   task,
@@ -193,7 +194,7 @@ export default function TaskEditor({
                 <FormLabel>Project</FormLabel>
                 <Select
                   variant="filled"
-                  focusBorderColor="blue.400"
+                  focusBorderColor={colors.interactiveFocus}
                   size="md"
                   value={form.projectMode === "new" ? "__new__" : form.project || ""}
                   onChange={(event) => handleProjectSelect(event.target.value)}
@@ -210,7 +211,7 @@ export default function TaskEditor({
                   <Input
                     mt={2}
                     variant="filled"
-                    focusBorderColor="blue.400"
+                    focusBorderColor={colors.interactiveFocus}
                     placeholder="New project name"
                     value={form.newProjectName}
                     onChange={(event) => handleNewProjectNameChange(event.target.value)}
@@ -221,14 +222,14 @@ export default function TaskEditor({
               <FormControl>
                 <FormLabel>Due date</FormLabel>
                 <InputGroup>
-                  <InputLeftElement pointerEvents="none" color="gray.400" aria-hidden="true">
+                  <InputLeftElement pointerEvents="none" color={colors.textSubtle} aria-hidden="true">
                     📅
                   </InputLeftElement>
                   <Input
                     pl={10}
                     type="date"
                     variant="filled"
-                    focusBorderColor="blue.400"
+                    focusBorderColor={colors.interactiveFocus}
                     value={form.due}
                     onChange={(event) => handleChange("due", event.target.value)}
                   />
@@ -274,7 +275,7 @@ export default function TaskEditor({
               <Textarea
                 rows={4}
                 variant="filled"
-                focusBorderColor="blue.400"
+                focusBorderColor={colors.interactiveFocus}
                 value={form.notes}
                 onChange={(event) => handleChange("notes", event.target.value)}
               />
@@ -299,19 +300,19 @@ export default function TaskEditor({
             px={6}
             colorScheme="purple"
             variant={form.done ? "solid" : "outline"}
-            color={form.done ? "white" : "purple.600"}
+            color={form.done ? colors.stateSuccessText : colors.textAccent}
             bgGradient={form.done ? WORKSPACE_HEADER_MENU_STYLES.gradient : undefined}
-            borderColor={form.done ? undefined : "purple.500"}
+            borderColor={form.done ? undefined : colors.borderPriority}
             boxShadow={form.done ? "lg" : "md"}
             _hover={
               form.done
                 ? { bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "xl" }
-                : { bg: "purple.50" }
+                : { bg: colors.surfacePriority }
             }
             _active={
               form.done
                 ? { bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "xl" }
-                : { bg: "purple.100" }
+                : { bg: colors.surfaceDropzone }
             }
           >
             {form.done ? "Marked as Done" : "Mark as Done"}

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Badge, Button, HStack, Spinner, Text } from "@chakra-ui/react";
 import { CheckCircleIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
+import { colors } from "../theme/tokens.js";
 
 const MotionBadge = motion(Badge);
 
@@ -21,7 +22,7 @@ function useIndicatorContent(state) {
         return {
           type: "saving",
           content: (
-            <HStack spacing={2} color="blue.500" fontSize="sm">
+            <HStack spacing={2} color={colors.feedbackInfo} fontSize="sm">
               <Spinner size="sm" />
               <Text>Saving…</Text>
             </HStack>
@@ -76,7 +77,7 @@ function useIndicatorContent(state) {
         return {
           type: "error",
           content: (
-            <HStack spacing={2} color="red.500" fontSize="sm">
+            <HStack spacing={2} color={colors.feedbackError} fontSize="sm">
               <WarningTwoIcon />
               <Text>Save failed</Text>
             </HStack>
