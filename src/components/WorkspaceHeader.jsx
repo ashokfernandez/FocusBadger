@@ -18,6 +18,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import SaveStatusIndicator from "./SaveStatusIndicator.jsx";
 import { HEADER_LAYOUT } from "../layout.js";
 import { WORKSPACE_HEADER_ACTION_SPACING, WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
+import ColorModeToggle from "./ColorModeToggle.jsx";
 
 export default function WorkspaceHeader({
   onAddTask,
@@ -45,6 +46,9 @@ export default function WorkspaceHeader({
         <Wrap spacing={3} align="center">
           <WrapItem>
             <SaveStatusIndicator state={saveState} onSave={onSave} />
+          </WrapItem>
+          <WrapItem>
+            <ColorModeToggle />
           </WrapItem>
           <WrapItem>
             <FormControl display="flex" alignItems="center" width="auto">
