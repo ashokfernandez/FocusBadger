@@ -7,9 +7,11 @@ describe("buildJSONExport", () => {
       [{ title: "Task" }],
       ["Alpha"]
     );
-    const parsed = JSON.parse(output);
+    const parsed = JSON.parse(output.data);
     expect(parsed[0]).toEqual({ type: "project", name: "Alpha" });
     expect(parsed[1]).toEqual({ title: "Task" });
+    expect(output.clipboardText.includes("Task data (projects first, then tasks):")).toBe(true);
+    expect(output.clipboardText.includes(output.data)).toBe(true);
   });
 });
 

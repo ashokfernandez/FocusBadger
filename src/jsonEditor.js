@@ -1,10 +1,46 @@
 import { parseJSONL } from "./jsonl.js";
 import { hydrateRecords } from "./projects.js";
+import assistantTemplate from "./prompts/assistant-template.js";
+
+const PROMPT_CONTEXT = [
+  "FocusBadger is a local-first planning board that stores every project and task in a JSON Lines file.",
+  "Projects are declared before tasks, and each task carries optional metadata for priority scoring."
+].join(" ");
+
+const PROMPT_GOALS = [
+  "- Keep changes focused on the request that accompanies this prompt.",
+  "- Preserve untouched tasks verbatim so diffs stay small and easy to review.",
+  "- Highlight next steps or blockers when the user asks for strategy help."
+].join("\n");
+
+const PROMPT_EXPECTED_OUTPUT = [
+  "- Reply with the full data set as a JSON array string that FocusBadger can paste directly.",
+  "- Keep all project records before task records.",
+  "- Maintain existing ids and timestamps; use ISO 8601 UTC when creating or updating tasks.",
+  "- Do not include commentary outside of the JSON payload."
+].join("\n");
+
+function fillPromptTemplate(template, values) {
+  return template.replace(/{{(\w+)}}/g, (match, key) => {
+    if (Object.prototype.hasOwnProperty.call(values, key)) {
+      return values[key];
+    }
+    return match;
+  });
+}
 
 export function buildJSONExport(tasks = [], projects = []) {
   const projectRecords = projects.map((name) => ({ type: "project", name }));
   const records = [...projectRecords, ...tasks];
-  return JSON.stringify(records, null, 2);
+  const data = JSON.stringify(records, null, 2);
+  const clipboardText = fillPromptTemplate(assistantTemplate, {
+    context: PROMPT_CONTEXT,
+    goals: PROMPT_GOALS,
+    expectedOutput: PROMPT_EXPECTED_OUTPUT,
+    data
+  });
+
+  return { data, clipboardText };
 }
 
 function ensureObject(value) {
