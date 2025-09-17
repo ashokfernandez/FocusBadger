@@ -85,7 +85,7 @@ function SaveStatusIndicator({ state }) {
   if (state.status === "dirty") {
     return (
       <Badge colorScheme="orange" variant="subtle" fontSize="xs">
-        Saving soon…
+        Unsaved changes
       </Badge>
     );
   }
