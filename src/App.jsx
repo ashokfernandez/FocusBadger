@@ -31,6 +31,10 @@ import ProjectsPanel from "./components/ProjectsPanel.jsx";
 import AssistantWorkflowModal from "./components/AssistantWorkflowModal.jsx";
 import MatrixSortControl from "./components/MatrixSortControl.jsx";
 const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
+const STORAGE_MODE_KEY = "taskbadger:storageMode";
+const STORAGE_MODE_LOCAL = "local";
+const STORAGE_MODE_FILE = "file";
+const STORAGE_SNAPSHOT_KEY = "taskbadger:snapshot";
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
@@ -46,6 +50,7 @@ export default function App() {
   const jsonModal = useDisclosure();
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
+  const hasLoadedStoredSnapshotRef = useRef(false);
   const [saveState, setSaveState] = useState({ status: "idle" });
   const [jsonTabIndex, setJsonTabIndex] = useState(0);
   const [jsonInputValue, setJsonInputValue] = useState("");
@@ -54,6 +59,12 @@ export default function App() {
   const [isJsonSaving, setIsJsonSaving] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(false);
   const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
+  const [storageMode, setStorageMode] = useState(() => {
+    if (typeof window === "undefined") return STORAGE_MODE_FILE;
+    const stored = window.localStorage.getItem(STORAGE_MODE_KEY);
+    return stored === STORAGE_MODE_LOCAL ? STORAGE_MODE_LOCAL : STORAGE_MODE_FILE;
+  });
+  const isLocalStorageMode = storageMode === STORAGE_MODE_LOCAL;
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
@@ -94,6 +105,43 @@ export default function App() {
       setShowDemoBanner(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STORAGE_MODE_KEY, storageMode);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [storageMode]);
+
+  useEffect(() => {
+    if (hasLoadedStoredSnapshotRef.current) return;
+    if (!isLocalStorageMode) return;
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(STORAGE_SNAPSHOT_KEY);
+      if (!stored) {
+        hasLoadedStoredSnapshotRef.current = true;
+        return;
+      }
+      const parsed = parseJSONInput(stored);
+      if (!parsed?.ok) {
+        hasLoadedStoredSnapshotRef.current = true;
+        return;
+      }
+      const { tasks: storedTasks, projects: storedProjects } = parsed;
+      setTasks(storedTasks);
+      setProjects(storedProjects);
+      const snapshot = buildSnapshot(storedTasks, storedProjects);
+      lastSavedRef.current = snapshot;
+      setSaveState({ status: storedTasks.length || storedProjects.length ? "saved" : "idle" });
+      hasLoadedStoredSnapshotRef.current = true;
+    } catch (error) {
+      console.error(error);
+      hasLoadedStoredSnapshotRef.current = true;
+    }
+  }, [isLocalStorageMode, buildSnapshot]);
 
   useEffect(() => {
     setMatrixFilters((prev) => {
@@ -193,6 +241,49 @@ export default function App() {
 
   useEffect(() => {
     const snapshot = buildSnapshot(tasks, projects);
+
+    if (isLocalStorageMode) {
+      clearPendingSave();
+      if (typeof window === "undefined") {
+        setSaveState({ status: tasks.length || projects.length ? "unsynced" : "idle" });
+        return () => {};
+      }
+      if (!tasks.length && !projects.length) {
+        try {
+          window.localStorage.removeItem(STORAGE_SNAPSHOT_KEY);
+        } catch (error) {
+          console.error(error);
+        }
+        lastSavedRef.current = "";
+        setSaveState({ status: "idle" });
+        return () => {};
+      }
+      if (snapshot === lastSavedRef.current) {
+        setSaveState({ status: "saved" });
+        return () => {};
+      }
+      setSaveState({ status: "saving" });
+      const timeout = setTimeout(() => {
+        try {
+          window.localStorage.setItem(STORAGE_SNAPSHOT_KEY, snapshot);
+          lastSavedRef.current = snapshot;
+          setSaveState({ status: "saved", timestamp: Date.now() });
+        } catch (error) {
+          console.error(error);
+          setSaveState({ status: "error", error });
+        } finally {
+          saveTimeoutRef.current = null;
+        }
+      }, 400);
+      saveTimeoutRef.current = timeout;
+      return () => {
+        clearTimeout(timeout);
+        if (saveTimeoutRef.current === timeout) {
+          saveTimeoutRef.current = null;
+        }
+      };
+    }
+
     const handle = fileHandleRef.current;
 
     if (!handle) {
@@ -234,7 +325,14 @@ export default function App() {
         saveTimeoutRef.current = null;
       }
     };
-  }, [tasks, projects, buildSnapshot, writeToHandle, clearPendingSave]);
+  }, [
+    tasks,
+    projects,
+    isLocalStorageMode,
+    buildSnapshot,
+    writeToHandle,
+    clearPendingSave
+  ]);
 
   const updateTask = useCallback((index, mutator) => {
     setTasks((prev) => {
@@ -486,15 +584,20 @@ export default function App() {
       setTasks(nextTasks);
       setProjects(nextProjects);
       clearPendingSave();
-      const handle = await ensureHandleForSave();
-      if (handle) {
-        setSaveState({ status: "saving" });
-        await writeToHandle(handle, snapshot);
-        lastSavedRef.current = snapshot;
-        setSaveState({ status: "saved", timestamp: Date.now() });
+      if (isLocalStorageMode) {
+        lastSavedRef.current = "";
+        setSaveState({ status: nextTasks.length || nextProjects.length ? "saving" : "idle" });
       } else {
-        lastSavedRef.current = snapshot;
-        setSaveState({ status: nextTasks.length || nextProjects.length ? "unsynced" : "idle" });
+        const handle = await ensureHandleForSave();
+        if (handle) {
+          setSaveState({ status: "saving" });
+          await writeToHandle(handle, snapshot);
+          lastSavedRef.current = snapshot;
+          setSaveState({ status: "saved", timestamp: Date.now() });
+        } else {
+          lastSavedRef.current = snapshot;
+          setSaveState({ status: nextTasks.length || nextProjects.length ? "unsynced" : "idle" });
+        }
       }
       jsonModal.onClose();
     } catch (error) {
@@ -503,7 +606,15 @@ export default function App() {
     } finally {
       setIsJsonSaving(false);
     }
-  }, [jsonParsed, buildSnapshot, clearPendingSave, ensureHandleForSave, jsonModal, writeToHandle]);
+  }, [
+    jsonParsed,
+    buildSnapshot,
+    clearPendingSave,
+    ensureHandleForSave,
+    jsonModal,
+    writeToHandle,
+    isLocalStorageMode
+  ]);
 
   const handleSaveEdit = useCallback(
     (changes) => {
@@ -520,6 +631,25 @@ export default function App() {
     setEditingIndex(null);
   }, [disclosure]);
 
+  const handleStorageModeToggle = useCallback(
+    (nextValue) => {
+      if (nextValue) {
+        fileHandleRef.current = null;
+        lastSavedRef.current = "";
+        if (tasks.length || projects.length) {
+          hasLoadedStoredSnapshotRef.current = true;
+        } else {
+          hasLoadedStoredSnapshotRef.current = false;
+        }
+        setStorageMode(STORAGE_MODE_LOCAL);
+      } else {
+        hasLoadedStoredSnapshotRef.current = true;
+        setStorageMode(STORAGE_MODE_FILE);
+      }
+    },
+    [tasks, projects]
+  );
+
   const handleLoadSample = useCallback(async () => {
     const sources = ["/tasks.json", "/tasks.sample.jsonl"];
     for (const path of sources) {
@@ -532,10 +662,15 @@ export default function App() {
         const { tasks: taskRecords, projects: projectList } = parsed;
         fileHandleRef.current = null;
         const snapshot = buildSnapshot(taskRecords, projectList);
-        lastSavedRef.current = snapshot;
+        if (isLocalStorageMode) {
+          lastSavedRef.current = "";
+          setSaveState({ status: taskRecords.length || projectList.length ? "saving" : "idle" });
+        } else {
+          lastSavedRef.current = snapshot;
+          setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
+        }
         setProjects(projectList);
         setTasks(taskRecords);
-        setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
         setShowDemoBanner(false);
         return;
       } catch (error) {
@@ -543,7 +678,7 @@ export default function App() {
       }
     }
     alert("Unable to load sample tasks.json");
-  }, [buildSnapshot]);
+  }, [buildSnapshot, isLocalStorageMode]);
 
   const handleOpenFile = useCallback(async () => {
     if (!window.showOpenFilePicker) {
@@ -554,6 +689,7 @@ export default function App() {
       types: [{ description: "JSONL", accept: { "text/plain": [".jsonl"] } }]
     });
     fileHandleRef.current = handle;
+    setStorageMode(STORAGE_MODE_FILE);
     const file = await handle.getFile();
     const text = await file.text();
     const parsed = parseJSONInput(text);
@@ -602,7 +738,9 @@ export default function App() {
           onOpenFile={handleOpenFile}
           onAssistantTab={openAssistantIo}
           saveState={saveState}
-          onSave={handleSaveFile}
+          onSave={isLocalStorageMode ? undefined : handleSaveFile}
+          isLocalStorageEnabled={isLocalStorageMode}
+          onToggleLocalStorage={handleStorageModeToggle}
         />
         <Tabs
           index={workspaceTabIndex}

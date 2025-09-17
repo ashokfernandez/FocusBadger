@@ -1,4 +1,19 @@
-import { Box, Button, Flex, Heading, Menu, MenuButton, MenuItem, MenuList, Text, Wrap, WrapItem } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Flex,
+  FormControl,
+  FormLabel,
+  Heading,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  Switch,
+  Text,
+  Wrap,
+  WrapItem
+} from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import SaveStatusIndicator from "./SaveStatusIndicator.jsx";
 import { HEADER_LAYOUT } from "../layout.js";
@@ -10,6 +25,8 @@ export default function WorkspaceHeader({
   onAssistantTab,
   saveState,
   onSave,
+  isLocalStorageEnabled = false,
+  onToggleLocalStorage,
   title = "TaskBadger",
   subtitle = "Focus on what matters"
 }) {
@@ -19,8 +36,30 @@ export default function WorkspaceHeader({
         <Heading size="lg">{title}</Heading>
         <Text color="gray.500">{subtitle}</Text>
       </Box>
-      <Flex {...HEADER_LAYOUT.container}>
-        <SaveStatusIndicator state={saveState} onSave={onSave} />
+      <Flex
+        {...HEADER_LAYOUT.container}
+        align={{ base: "flex-start", md: "center" }}
+        gap={6}
+        flexWrap={{ base: "wrap", md: "nowrap" }}
+      >
+        <Wrap spacing={3} align="center">
+          <WrapItem>
+            <SaveStatusIndicator state={saveState} onSave={onSave} />
+          </WrapItem>
+          <WrapItem>
+            <FormControl display="flex" alignItems="center" width="auto">
+              <FormLabel htmlFor="workspace-local-storage" mb="0" fontSize="sm" fontWeight="medium">
+                Use local storage
+              </FormLabel>
+              <Switch
+                id="workspace-local-storage"
+                colorScheme="purple"
+                isChecked={isLocalStorageEnabled}
+                onChange={(event) => onToggleLocalStorage?.(event.target.checked)}
+              />
+            </FormControl>
+          </WrapItem>
+        </Wrap>
         <Wrap spacing={WORKSPACE_HEADER_ACTION_SPACING} justify="flex-end">
           <WrapItem>
             <Button colorScheme="purple" onClick={onAddTask} {...HEADER_LAYOUT.button}>
