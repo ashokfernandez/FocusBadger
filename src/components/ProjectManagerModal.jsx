@@ -19,6 +19,7 @@ import {
   Tooltip
 } from "@chakra-ui/react";
 import { DeleteIcon } from "@chakra-ui/icons";
+import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
 
 export function ProjectListItem({ name, count, onRename, onDelete }) {
   const [value, setValue] = useState(name);
@@ -53,9 +54,16 @@ export function ProjectListItem({ name, count, onRename, onDelete }) {
         />
         <Button
           size="sm"
-          variant="ghost"
+          fontWeight="semibold"
+          borderRadius="full"
+          px={4}
+          variant="outline"
+          colorScheme="purple"
+          borderColor="purple.500"
           onClick={handleRename}
           isDisabled={value.trim() === name.trim()}
+          _hover={{ bg: "purple.50" }}
+          _active={{ bg: "purple.100" }}
         >
           Rename
         </Button>
@@ -63,6 +71,7 @@ export function ProjectListItem({ name, count, onRename, onDelete }) {
           <IconButton
             size="sm"
             variant="ghost"
+            colorScheme="red"
             aria-label={`Delete project ${name}`}
             icon={<DeleteIcon />}
             onClick={() => onDelete(name)}
@@ -159,7 +168,17 @@ export default function ProjectManagerModal({
                   }}
                   onKeyDown={handleKeyPress}
                 />
-                <Button colorScheme="blue" onClick={handleAdd}>
+                <Button
+                  onClick={handleAdd}
+                  fontWeight="semibold"
+                  borderRadius="full"
+                  px={5}
+                  color="white"
+                  bgGradient={WORKSPACE_HEADER_MENU_STYLES.gradient}
+                  boxShadow="md"
+                  _hover={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "lg" }}
+                  _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "lg" }}
+                >
                   Add
                 </Button>
               </HStack>

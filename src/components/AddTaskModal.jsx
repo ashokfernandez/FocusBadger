@@ -5,6 +5,8 @@ import {
   FormErrorMessage,
   FormLabel,
   Input,
+  InputGroup,
+  InputLeftElement,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -12,25 +14,24 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  NumberInput,
-  NumberInputField,
-  SimpleGrid,
   Select,
+  SimpleGrid,
   Stack,
+  Switch,
   Textarea
 } from "@chakra-ui/react";
 import EffortSlider from "../EffortSlider.jsx";
-import { sanitizeNumber, parseTags } from "../utils/taskFields.js";
+import { sanitizeNumber } from "../utils/taskFields.js";
+import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
 
 export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreateProject }) {
   const [form, setForm] = useState({
     title: "",
     project: "",
     due: "",
-    importance: "",
-    urgency: "",
+    importance: false,
+    urgency: false,
     effort: 3,
-    tags: "",
     notes: "",
     projectMode: "none",
     newProjectName: ""
@@ -45,16 +46,21 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
       title: "",
       project: "",
       due: "",
-      importance: "",
-      urgency: "",
+      importance: false,
+      urgency: false,
       effort: 3,
-      tags: "",
       notes: "",
       projectMode: "none",
       newProjectName: ""
     });
     setError("");
     setProjectError("");
+    requestAnimationFrame(() => {
+      if (titleRef.current) {
+        titleRef.current.focus();
+        titleRef.current.select();
+      }
+    });
   }, [isOpen]);
 
   const handleChange = useCallback((field, value) => {
@@ -106,10 +112,9 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
         title,
         project: projectValue,
         due: form.due.trim() || undefined,
-        importance: sanitizeNumber(form.importance),
-        urgency: sanitizeNumber(form.urgency),
+        importance: form.importance ? 5 : undefined,
+        urgency: form.urgency ? 5 : undefined,
         effort: sanitizeNumber(form.effort),
-        tags: parseTags(form.tags),
         notes: form.notes.trim() || undefined
       };
 
@@ -126,7 +131,15 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
   return (
     <Modal isOpen={isOpen} onClose={onClose} initialFocusRef={titleRef} size="lg">
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={handleSubmit}>
+      <ModalContent
+        as="form"
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            handleSubmit(event);
+          }
+        }}
+      >
         <ModalHeader>Add task</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -144,6 +157,9 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               <FormControl isInvalid={Boolean(projectError)}>
                 <FormLabel>Project</FormLabel>
                 <Select
+                  variant="filled"
+                  focusBorderColor="blue.400"
+                  size="md"
                   value={
                     form.projectMode === "new" ? "__new__" : form.project || ""
                   }
@@ -160,6 +176,8 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
                 {form.projectMode === "new" ? (
                   <Input
                     mt={2}
+                    variant="filled"
+                    focusBorderColor="blue.400"
                     placeholder="New project name"
                     value={form.newProjectName}
                     onChange={(event) => handleNewProjectNameChange(event.target.value)}
@@ -169,56 +187,58 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               </FormControl>
               <FormControl>
                 <FormLabel>Due date</FormLabel>
-                <Input
-                  type="date"
-                  value={form.due}
-                  onChange={(event) => handleChange("due", event.target.value)}
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none" color="gray.400" aria-hidden="true">
+                    📅
+                  </InputLeftElement>
+                  <Input
+                    pl={10}
+                    type="date"
+                    variant="filled"
+                    focusBorderColor="blue.400"
+                    value={form.due}
+                    onChange={(event) => handleChange("due", event.target.value)}
+                  />
+                </InputGroup>
+              </FormControl>
+              <FormControl display="flex" alignItems="center">
+                <Switch
+                  id="importance-toggle"
+                  isChecked={form.importance}
+                  onChange={(event) => handleChange("importance", event.target.checked)}
+                  colorScheme="purple"
+                  mr={3}
                 />
+                <FormLabel htmlFor="importance-toggle" mb={0}>
+                  Important
+                </FormLabel>
               </FormControl>
-              <FormControl>
-                <FormLabel>Importance</FormLabel>
-                <NumberInput
-                  min={0}
-                  max={5}
-                  value={form.importance}
-                  onChange={(value) => handleChange("importance", value)}
-                >
-                  <NumberInputField placeholder="0-5" />
-                </NumberInput>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Urgency</FormLabel>
-                <NumberInput
-                  min={0}
-                  max={5}
-                  value={form.urgency}
-                  onChange={(value) => handleChange("urgency", value)}
-                >
-                  <NumberInputField placeholder="0-5" />
-                </NumberInput>
+              <FormControl display="flex" alignItems="center">
+                <Switch
+                  id="urgency-toggle"
+                  isChecked={form.urgency}
+                  onChange={(event) => handleChange("urgency", event.target.checked)}
+                  colorScheme="orange"
+                  mr={3}
+                />
+                <FormLabel htmlFor="urgency-toggle" mb={0}>
+                  Urgent
+                </FormLabel>
               </FormControl>
             </SimpleGrid>
             <FormControl>
-              <FormLabel>Effort</FormLabel>
               <EffortSlider
                 value={form.effort}
                 defaultValue={3}
                 onChange={handleEffortChange}
-                size="sm"
-                isCompact
-              />
-            </FormControl>
-            <FormControl>
-              <FormLabel>Tags</FormLabel>
-              <Input
-                placeholder="comma separated"
-                value={form.tags}
-                onChange={(event) => handleChange("tags", event.target.value)}
+                isAlwaysVisible
               />
             </FormControl>
             <FormControl>
               <FormLabel>Notes</FormLabel>
               <Textarea
+                variant="filled"
+                focusBorderColor="blue.400"
                 value={form.notes}
                 onChange={(event) => handleChange("notes", event.target.value)}
                 rows={3}
@@ -226,16 +246,32 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
             </FormControl>
           </Stack>
         </ModalBody>
-        <ModalFooter>
-          <Stack direction="row" spacing={3}>
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button colorScheme="blue" type="submit">
-              Add task
-            </Button>
-          </Stack>
-        </ModalFooter>
+          <ModalFooter>
+            <Stack
+              direction={{ base: "column", sm: "row" }}
+              spacing={3}
+              w="full"
+              justify="flex-end"
+            >
+              <Button variant="ghost" onClick={onClose} width={{ base: "100%", sm: "auto" }}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                fontWeight="semibold"
+                borderRadius="full"
+                px={6}
+                color="white"
+                bgGradient={WORKSPACE_HEADER_MENU_STYLES.gradient}
+                boxShadow="md"
+                _hover={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "lg" }}
+                _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "lg" }}
+                width={{ base: "100%", sm: "auto" }}
+              >
+                Add task
+              </Button>
+            </Stack>
+          </ModalFooter>
       </ModalContent>
     </Modal>
   );
