@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Container, Stack, useClipboard, useDisclosure } from "@chakra-ui/react";
-import { bucket } from "./model.js";
 import {
   addProject as addProjectHelper,
   buildSnapshot,
@@ -19,6 +18,7 @@ import {
 import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
 import { buildJSONExport, parseJSONInput } from "./jsonEditor.js";
 import { createTaskPayload } from "./taskFactory.js";
+import { deriveTaskPriority } from "./utils/taskPriority.js";
 import AddTaskModal from "./components/AddTaskModal.jsx";
 import GlobalToolbar from "./components/GlobalToolbar.jsx";
 import TaskEditor from "./components/TaskEditor.jsx";
@@ -150,13 +150,8 @@ export default function App() {
 
     tasks.forEach((task, index) => {
       if (task.done) return;
-      const rawUrgency = task.urgency;
-      const urgencyScore = rawUrgency ?? 0;
-      const importanceScore = task.importance ?? 0;
-      const dueBucket = bucket(task, now);
-      const isUrgent =
-        urgencyScore >= 3 || (rawUrgency == null && dueBucket === "Today");
-      const isImportant = importanceScore >= 3;
+      const priority = deriveTaskPriority(task, now);
+      const { isUrgent, isImportant } = priority;
 
       if (!shouldIncludeTaskInMatrix(task, matrixFilters)) return;
 
