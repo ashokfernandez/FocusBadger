@@ -132,6 +132,7 @@ export default function TaskCard({
       display="flex"
       flexDirection="column"
       gap={2.5}
+      h="full"
     >
       <Flex align="flex-start" gap={3}>
         <MotionCircle
