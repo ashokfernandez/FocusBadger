@@ -1,16 +1,14 @@
-import { Children, useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { Button, Wrap, WrapItem } from "@chakra-ui/react";
 import { ALL_PROJECTS, UNASSIGNED_LABEL } from "../matrix.js";
 import { MATRIX_FILTER_CHIP_SPACING } from "./componentTokens.js";
 
-export default function MatrixFilterChips({ options, active, onToggle, children }) {
+export default function MatrixFilterChips({ options, active, onToggle }) {
   const renderLabel = useCallback((value) => {
     if (value === ALL_PROJECTS) return "All projects";
     if (value === UNASSIGNED_LABEL) return "Unassigned";
     return value;
   }, []);
-
-  const extraItems = useMemo(() => Children.toArray(children), [children]);
 
   return (
     <Wrap spacing={MATRIX_FILTER_CHIP_SPACING} mt={1}>
@@ -30,9 +28,6 @@ export default function MatrixFilterChips({ options, active, onToggle, children 
           </WrapItem>
         );
       })}
-      {extraItems.map((child, index) => (
-        <WrapItem key={`extra-${index}`}>{child}</WrapItem>
-      ))}
     </Wrap>
   );
 }

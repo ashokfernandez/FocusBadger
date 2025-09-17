@@ -1,24 +1,46 @@
 import { useCallback, useEffect, useState } from "react";
-import { Box, Flex, Heading, Tag, Text, Wrap, WrapItem } from "@chakra-ui/react";
+import { Badge, Box, Flex, Heading, Text, Wrap, WrapItem } from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
-import EffortSlider, { describeEffort } from "../EffortSlider.jsx";
-import { classifyTaskPriority } from "../matrix.js";
+import EffortSlider from "../EffortSlider.jsx";
+import { MATRIX_SORTS, classifyTaskPriority } from "../matrix.js";
 
 const MotionCircle = motion(Box);
 
-export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, draggable = false }) {
+export default function TaskCard({
+  item,
+  onEdit,
+  onToggleDone,
+  onEffortChange,
+  highlightMode,
+  draggable = false
+}) {
   const { task, index, priority: providedPriority } = item;
   const [isPopping, setPopping] = useState(false);
   const [isDragging, setDragging] = useState(false);
   const priority = providedPriority ?? classifyTaskPriority(task);
   const urgencyColorScheme = priority.isUrgent ? "red" : "gray";
   const importanceColorScheme = priority.isImportant ? "teal" : "gray";
-  const effortDescriptor = describeEffort(task.effort);
   const hasEffort = task.effort != null;
   const projectLabel = task.project?.trim();
   const hasProject = Boolean(projectLabel);
   const hasDueDate = Boolean(task.due);
+  const isPriorityHighlight =
+    highlightMode === MATRIX_SORTS.SCORE && priority.isUrgent && priority.isImportant && !task.done;
+  const isLowEffortHighlight =
+    highlightMode === MATRIX_SORTS.LOW_EFFORT && hasEffort && task.effort <= 3 && !task.done;
+  const highlightBorderColor = isPriorityHighlight
+    ? "purple.400"
+    : isLowEffortHighlight
+      ? "green.300"
+      : "gray.200";
+  const highlightBackground = task.done
+    ? "gray.100"
+    : isPriorityHighlight
+      ? "white"
+      : isLowEffortHighlight
+        ? "green.50"
+        : "white";
 
   const handleEffortUpdate = useCallback(
     (value) => {
@@ -70,19 +92,20 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       borderWidth="1px"
       borderRadius="xl"
       p={3}
-      bg={task.done ? "gray.100" : "white"}
-      boxShadow={isDragging ? "lg" : "sm"}
+      bg={highlightBackground}
+      borderColor={highlightBorderColor}
+      boxShadow={isDragging ? "lg" : isPriorityHighlight ? "lg" : isLowEffortHighlight ? "md" : "sm"}
       transition="all 0.15s ease"
       _hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
       display="flex"
       flexDirection="column"
-      gap={2}
+      gap={2.5}
     >
       <Flex align="flex-start" gap={3}>
         <MotionCircle
-          boxSize={8}
-          minW={8}
-          minH={8}
+          boxSize={6}
+          minW={6}
+          minH={6}
           flexShrink={0}
           borderRadius="full"
           borderWidth="2px"
@@ -102,63 +125,73 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
           {task.done ? <CheckIcon w={3} h={3} /> : null}
         </MotionCircle>
         <Box flex="1" minW={0}>
-          <Heading as="h3" size="xs" noOfLines={2}>
+          <Wrap spacing={1} shouldWrapChildren mb={2}>
+            <WrapItem>
+              <Badge
+                colorScheme={urgencyColorScheme}
+                variant="subtle"
+                fontSize="2xs"
+                fontWeight="semibold"
+                borderRadius="full"
+                px={2}
+                py={0.5}
+              >
+                {priority.urgencyLabel}
+              </Badge>
+            </WrapItem>
+            <WrapItem>
+              <Badge
+                colorScheme={importanceColorScheme}
+                variant="subtle"
+                fontSize="2xs"
+                fontWeight="semibold"
+                borderRadius="full"
+                px={2}
+                py={0.5}
+              >
+                {priority.importanceLabel}
+              </Badge>
+            </WrapItem>
+          </Wrap>
+          <Heading as="h3" size="sm" noOfLines={2}>
             {task.title}
           </Heading>
-          <Text fontSize="xs" color="gray.500" noOfLines={2} mt={0.5}>
-            {task.notes ? task.notes : "Click to edit details"}
-          </Text>
-          {hasProject || hasDueDate ? (
-            <Wrap spacing={1} mt={1} shouldWrapChildren>
+          {(hasProject || hasDueDate) && (
+            <Flex
+              mt={1}
+              gap={2}
+              align="center"
+              wrap="wrap"
+              fontSize="xs"
+              color="gray.500"
+            >
               {hasProject ? (
-                <WrapItem>
-                  <Tag size="xs" variant="subtle" colorScheme="purple">
-                    {projectLabel}
-                  </Tag>
-                </WrapItem>
+                <Text fontWeight="semibold" color="purple.500" noOfLines={1}>
+                  {projectLabel}
+                </Text>
+              ) : null}
+              {hasProject && hasDueDate ? (
+                <Box as="span" color="gray.400">
+                  •
+                </Box>
               ) : null}
               {hasDueDate ? (
-                <WrapItem>
-                  <Tag size="xs" variant="subtle" colorScheme="orange">
-                    Due {task.due}
-                  </Tag>
-                </WrapItem>
+                <Text color="orange.500" noOfLines={1}>
+                  Due {task.due}
+                </Text>
               ) : null}
-            </Wrap>
-          ) : null}
+            </Flex>
+          )}
         </Box>
       </Flex>
-      <Flex align="center" gap={2}>
-        <Box
-          flex="1"
-          onClick={(event) => event.stopPropagation()}
-          onMouseDown={(event) => event.stopPropagation()}
-          onTouchStart={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
-        </Box>
-        <Text
-          fontSize="xs"
-          color={isDragging ? "purple.500" : hasEffort ? "gray.600" : "gray.400"}
-          fontWeight={isDragging ? "semibold" : "medium"}
-          whiteSpace="nowrap"
-        >
-          {hasEffort ? effortDescriptor.label : "Set effort"}
-        </Text>
-      </Flex>
-      <Wrap spacing={1} shouldWrapChildren>
-        <WrapItem>
-          <Tag size="xs" variant="subtle" colorScheme={urgencyColorScheme}>
-            {priority.urgencyLabel}
-          </Tag>
-        </WrapItem>
-        <WrapItem>
-          <Tag size="xs" variant="subtle" colorScheme={importanceColorScheme}>
-            {priority.importanceLabel}
-          </Tag>
-        </WrapItem>
-      </Wrap>
+      <Box
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact showDescriptor />
+      </Box>
     </Box>
   );
 }
