@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Box, Flex, Stack, Text, Textarea, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Flex, SimpleGrid, Text, Textarea, Tooltip } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
 import { getProjectMoodHighlight } from "../matrix.js";
 
@@ -168,7 +168,14 @@ export default function ProjectSection({
         </Text>
       ) : null}
       {items.length ? (
-        <Stack as="ul" spacing={3}>
+        <SimpleGrid
+          as="ul"
+          columns={{ base: 1, md: 2, xl: 3 }}
+          spacing={3}
+          listStyleType="none"
+          m={0}
+          p={0}
+        >
           {items.map((item) => (
             <TaskCard
               key={item.index}
@@ -181,7 +188,7 @@ export default function ProjectSection({
               highlightMode={highlightMode}
             />
           ))}
-        </Stack>
+        </SimpleGrid>
       ) : (
         <Text fontSize="sm" color="gray.400">
           {projectKey ? `Drag tasks here to assign to ${name}.` : "Drag tasks here to keep tasks unassigned."}

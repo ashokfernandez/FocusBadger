@@ -738,7 +738,7 @@ export default function App() {
   useEffect(() => () => clearPendingSave(), [clearPendingSave]);
 
   return (
-    <Container maxW="7xl" py={10}>
+    <Container maxW="8xl" px={{ base: 4, md: 6 }} py={10}>
       <Stack spacing={10}>
         <DemoDataBanner
           isVisible={showDemoBanner}
@@ -789,7 +789,7 @@ export default function App() {
                     onToggleFilter={toggleMatrixFilter}
                   />
                   <Box
-                    maxH={{ base: "none", lg: "70vh" }}
+                    maxH={{ base: "none", lg: "80vh" }}
                     overflowY={{ base: "visible", lg: "auto" }}
                     pr={{ lg: 2 }}
                   >
