@@ -1256,7 +1256,7 @@ export default function App() {
           <Box>
             <Heading size="lg">TaskBadger</Heading>
             <Text color="gray.500">
-              Focus on what matters, then see everything in context.
+              Focus on what matters
             </Text>
           </Box>
           <Flex {...HEADER_LAYOUT.container}>
@@ -1287,8 +1287,7 @@ export default function App() {
             <Stack spacing={2} mb={4}>
               <Heading size="md">Priority matrix</Heading>
               <Text fontSize="sm" color="gray.500">
-                Urgency is influenced by due dates and explicit urgency scores; importance relies on
-                the importance score. Everything here stays synced with the project lists below.
+                Filter tasks and focus your time - what do you <i>really</i> need to be doing <i>right now</i>?
               </Text>
               <MatrixFilterChips
                 options={matrixFilterOptions}
@@ -1347,8 +1346,7 @@ export default function App() {
             <Stack spacing={3} mb={4}>
               <Heading size="md">Projects</Heading>
               <Text fontSize="sm" color="gray.500">
-                Every task keeps its home project (or none). The matrix highlights the same items without
-                removing them from these lists.
+                Organise tasks by project
               </Text>
             </Stack>
             <Stack spacing={5}>
