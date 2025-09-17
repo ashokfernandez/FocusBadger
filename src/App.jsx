@@ -65,6 +65,7 @@ function parseTags(value) {
 
 const MotionCircle = motion(Box);
 const MotionBadge = motion(Badge);
+const UNASSIGNED_LABEL = "Unassigned";
 
 function SaveStatusIndicator({ state }) {
   if (state.status === "saving") {
@@ -321,9 +322,57 @@ function MatrixQuadrant({
   );
 }
 
-function ProjectSection({ name, items, onEditTask, onToggleTask }) {
+function ProjectSection({
+  name,
+  projectKey,
+  items,
+  onEditTask,
+  onToggleTask,
+  onDropProject
+}) {
+  const allowDrop = Boolean(onDropProject);
+  const [isHover, setHover] = useState(false);
+
+  const handleDragOver = useCallback(
+    (event) => {
+      if (!allowDrop) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      if (!isHover) setHover(true);
+    },
+    [allowDrop, isHover]
+  );
+
+  const handleDragLeave = useCallback(() => {
+    setHover(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event) => {
+      if (!allowDrop) return;
+      event.preventDefault();
+      setHover(false);
+      const raw = event.dataTransfer?.getData("text/plain");
+      if (!raw) return;
+      onDropProject?.(projectKey ?? undefined, raw);
+    },
+    [allowDrop, onDropProject, projectKey]
+  );
+
   return (
-    <Box borderWidth="1px" borderRadius="2xl" bg="white" boxShadow="md" p={5}>
+    <Box
+      borderWidth="1px"
+      borderRadius="2xl"
+      bg="white"
+      p={5}
+      boxShadow={allowDrop && isHover ? "xl" : "md"}
+      borderColor={allowDrop && isHover ? "purple.400" : "gray.100"}
+      borderStyle={allowDrop ? "dashed" : "solid"}
+      onDragOver={allowDrop ? handleDragOver : undefined}
+      onDragLeave={allowDrop ? handleDragLeave : undefined}
+      onDrop={allowDrop ? handleDrop : undefined}
+      transition="border-color 0.15s ease, box-shadow 0.15s ease"
+    >
       <Flex align="center" justify="space-between" mb={4}>
         <Heading size="sm">{name}</Heading>
         <Badge colorScheme="gray">{items.length}</Badge>
@@ -336,12 +385,13 @@ function ProjectSection({ name, items, onEditTask, onToggleTask }) {
               item={item}
               onEdit={onEditTask}
               onToggleDone={onToggleTask}
+              draggable={allowDrop}
             />
           ))}
         </Stack>
       ) : (
         <Text fontSize="sm" color="gray.400">
-          No tasks yet.
+          {projectKey ? `Drag tasks here to assign to ${name}.` : "Drag tasks here to keep tasks unassigned."}
         </Text>
       )}
     </Box>
@@ -574,34 +624,27 @@ function ProjectManagerModal({
   onDelete
 }) {
   const [newName, setNewName] = useState("");
-  const [error, setError] = useState("");
+  const [addError, setAddError] = useState("");
 
   useEffect(() => {
     if (!isOpen) {
       setNewName("");
-      setError("");
+      setAddError("");
     }
   }, [isOpen]);
 
   const handleAdd = useCallback(() => {
     const result = onAdd(newName);
     if (!result.ok) {
-      setError(result.message ?? "Unable to add project");
+      setAddError(result.message ?? "Unable to add project");
       return;
     }
     setNewName("");
-    setError("");
+    setAddError("");
   }, [newName, onAdd]);
 
   const handleRename = useCallback(
-    (name) => {
-      const next = window.prompt("Rename project", name);
-      if (next == null) return;
-      const result = onRename(name, next);
-      if (!result.ok) {
-        alert(result.message ?? "Unable to rename project");
-      }
-    },
+    (name, nextValue) => onRename(name, nextValue),
     [onRename]
   );
 
@@ -614,10 +657,7 @@ function ProjectManagerModal({
           : `Delete project "${name}"?`
       );
       if (!confirmed) return;
-      const result = onDelete(name);
-      if (!result.ok) {
-        alert(result.message ?? "Unable to delete project");
-      }
+      onDelete(name);
     },
     [onDelete, usage]
   );
@@ -639,50 +679,35 @@ function ProjectManagerModal({
         <ModalHeader>Manage projects</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          <Stack spacing={5}>
-            <FormControl isInvalid={Boolean(error)}>
+          <Stack spacing={6}>
+            <FormControl isInvalid={Boolean(addError)}>
               <FormLabel>Add project</FormLabel>
-              <Input
-                placeholder="Project name"
-                value={newName}
-                onChange={(event) => {
-                  setNewName(event.target.value);
-                  setError("");
-                }}
-                onKeyDown={handleKeyPress}
-              />
-              {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
+              <HStack align="center" spacing={3}>
+                <Input
+                  placeholder="Project name"
+                  value={newName}
+                  onChange={(event) => {
+                    setNewName(event.target.value);
+                    setAddError("");
+                  }}
+                  onKeyDown={handleKeyPress}
+                />
+                <Button colorScheme="blue" onClick={handleAdd}>
+                  Add
+                </Button>
+              </HStack>
+              {addError ? <FormErrorMessage>{addError}</FormErrorMessage> : null}
             </FormControl>
-            <Stack spacing={3}>
+            <Stack spacing={4}>
               {projects.length ? (
                 projects.map((name) => (
-                  <Flex
+                  <ProjectListItem
                     key={name}
-                    align={{ base: "flex-start", md: "center" }}
-                    justify="space-between"
-                    gap={3}
-                  >
-                    <Box>
-                      <Text fontWeight="semibold">{name}</Text>
-                      <Text fontSize="xs" color="gray.500">
-                        {(usage[name] ?? 0).toLocaleString()} task
-                        {usage[name] === 1 ? "" : "s"}
-                      </Text>
-                    </Box>
-                    <ButtonGroup size="sm">
-                      <Button variant="ghost" onClick={() => handleRename(name)}>
-                        Rename
-                      </Button>
-                      <Tooltip label="Delete project" placement="top">
-                        <IconButton
-                          aria-label={`Delete project ${name}`}
-                          icon={<DeleteIcon />}
-                          variant="ghost"
-                          onClick={() => handleDelete(name)}
-                        />
-                      </Tooltip>
-                    </ButtonGroup>
-                  </Flex>
+                    name={name}
+                    count={usage[name] ?? 0}
+                    onRename={handleRename}
+                    onDelete={handleDelete}
+                  />
                 ))
               ) : (
                 <Text fontSize="sm" color="gray.500">
@@ -699,6 +724,69 @@ function ProjectManagerModal({
         </ModalFooter>
       </ModalContent>
     </Modal>
+  );
+}
+
+function ProjectListItem({ name, count, onRename, onDelete }) {
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setValue(name);
+    setError("");
+  }, [name]);
+
+  const handleRename = useCallback(() => {
+    const result = onRename(name, value);
+    if (!result.ok) {
+      setError(result.message ?? "Unable to rename project");
+      setValue(name);
+    } else {
+      setValue(result.name ?? value);
+      setError("");
+    }
+  }, [name, onRename, value]);
+
+  return (
+    <Stack spacing={1} key={name}>
+      <HStack align="flex-start" spacing={3}>
+        <Box flex="1">
+          <Input
+            size="sm"
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setError("");
+            }}
+          />
+        </Box>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleRename}
+          isDisabled={value.trim() === name.trim()}
+        >
+          Rename
+        </Button>
+        <Tooltip label="Delete project" placement="top">
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={`Delete project ${name}`}
+            icon={<DeleteIcon />}
+            onClick={() => onDelete(name)}
+          />
+        </Tooltip>
+      </HStack>
+      <Text fontSize="xs" color="gray.500">
+        {count ? `${count.toLocaleString()} task${count === 1 ? "" : "s"}` : "No tasks yet"}
+      </Text>
+      {error ? (
+        <Text fontSize="xs" color="red.500">
+          {error}
+        </Text>
+      ) : null}
+    </Stack>
   );
 }
 
@@ -801,7 +889,7 @@ export default function App() {
       map.set(name, []);
     });
 
-    const noProject = [];
+    const unassigned = [];
 
     const sortItems = (items) =>
       items.slice().sort((a, b) => {
@@ -823,17 +911,19 @@ export default function App() {
           map.get(key).push(entry);
         }
       } else {
-        noProject.push(entry);
+        unassigned.push(entry);
       }
     });
 
     const entries = Array.from(map.entries())
-      .map(([name, items]) => ({ name, items: sortItems(items) }))
+      .map(([name, items]) => ({ name, projectKey: name, items: sortItems(items) }))
       .sort((a, b) => compareInsensitive(a.name, b.name));
 
-    if (noProject.length) {
-      entries.push({ name: "No project", items: sortItems(noProject) });
-    }
+    entries.push({
+      name: UNASSIGNED_LABEL,
+      projectKey: undefined,
+      items: sortItems(unassigned)
+    });
 
     return entries;
   }, [tasks, projects]);
@@ -1008,6 +1098,20 @@ export default function App() {
     [updateTask]
   );
 
+  const handleProjectDrop = useCallback(
+    (projectName, rawIndex) => {
+      const index = Number.parseInt(rawIndex, 10);
+      if (Number.isNaN(index)) return;
+      updateTask(index, (draft) => {
+        const target = projectName ?? undefined;
+        const current = draft.project ?? undefined;
+        if (current === target) return false;
+        return { project: target };
+      });
+    },
+    [updateTask]
+  );
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -1166,23 +1270,19 @@ export default function App() {
                 removing them from these lists.
               </Text>
             </Stack>
-            {projectGroups.length ? (
-              <Stack spacing={5}>
-                {projectGroups.map(({ name, items }) => (
-                  <ProjectSection
-                    key={name}
-                    name={name}
-                    items={items}
-                    onEditTask={handleOpenEditor}
-                    onToggleTask={handleToggleDone}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Text fontSize="sm" color="gray.400">
-                No tasks loaded yet. Import or add work to get started.
-              </Text>
-            )}
+            <Stack spacing={5}>
+              {projectGroups.map(({ name, projectKey, items }) => (
+                <ProjectSection
+                  key={projectKey ?? "__unassigned"}
+                  name={name}
+                  projectKey={projectKey}
+                  items={items}
+                  onEditTask={handleOpenEditor}
+                  onToggleTask={handleToggleDone}
+                  onDropProject={handleProjectDrop}
+                />
+              ))}
+            </Stack>
           </Box>
         </Stack>
       </Stack>
