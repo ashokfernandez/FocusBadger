@@ -1,6 +1,6 @@
 # FocusBadger
 
-[Jump straight to the live board](https://focusbadger.github.io/FocusBadger/)
+[Jump straight to the live board](https://ashokfernandez.github.io/FocusBadger/)
 
 FocusBadger is the cheeky little strategist that keeps your todo list honest. Drop in every task fighting for attention and it whispers back a plan: what’s urgent, what’s truly important, how heavy each lift will be, and which move fits your current mood. It’s your friendly accomplice for building momentum, not another dashboard nagging you about overdue chores.
 
