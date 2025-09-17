@@ -195,7 +195,7 @@ export default function TaskEditor({
               <FormControl>
                 <FormLabel>Due date</FormLabel>
                 <InputGroup>
-                  <InputLeftElement pointerEvents="none" color="gray.400">
+                  <InputLeftElement pointerEvents="none" color="gray.400" aria-hidden="true">
                     📅
                   </InputLeftElement>
                   <Input
@@ -266,6 +266,7 @@ export default function TaskEditor({
             leftIcon={<CheckIcon />}
             onClick={() => handleChange("done", !form.done)}
             aria-pressed={form.done}
+            type="button"
             size="md"
             fontWeight="semibold"
             borderRadius="full"

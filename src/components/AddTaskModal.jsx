@@ -188,7 +188,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               <FormControl>
                 <FormLabel>Due date</FormLabel>
                 <InputGroup>
-                  <InputLeftElement pointerEvents="none" color="gray.400">
+                  <InputLeftElement pointerEvents="none" color="gray.400" aria-hidden="true">
                     📅
                   </InputLeftElement>
                   <Input
@@ -246,26 +246,32 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
             </FormControl>
           </Stack>
         </ModalBody>
-        <ModalFooter>
-          <Stack direction="row" spacing={3}>
-            <Button variant="ghost" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              fontWeight="semibold"
-              borderRadius="full"
-              px={6}
-              color="white"
-              bgGradient={WORKSPACE_HEADER_MENU_STYLES.gradient}
-              boxShadow="md"
-              _hover={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "lg" }}
-              _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "lg" }}
+          <ModalFooter>
+            <Stack
+              direction={{ base: "column", sm: "row" }}
+              spacing={3}
+              w="full"
+              justify="flex-end"
             >
-              Add task
-            </Button>
-          </Stack>
-        </ModalFooter>
+              <Button variant="ghost" onClick={onClose} width={{ base: "100%", sm: "auto" }}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                fontWeight="semibold"
+                borderRadius="full"
+                px={6}
+                color="white"
+                bgGradient={WORKSPACE_HEADER_MENU_STYLES.gradient}
+                boxShadow="md"
+                _hover={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "lg" }}
+                _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "lg" }}
+                width={{ base: "100%", sm: "auto" }}
+              >
+                Add task
+              </Button>
+            </Stack>
+          </ModalFooter>
       </ModalContent>
     </Modal>
   );
