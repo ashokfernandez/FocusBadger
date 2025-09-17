@@ -12,7 +12,7 @@ function clampEffort(value) {
   return Math.round(value);
 }
 
-function describeEffort(value) {
+export function describeEffort(value) {
   if (value == null) {
     return { label: "Slide to set", colorScheme: "gray" };
   }

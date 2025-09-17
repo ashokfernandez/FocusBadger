@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Box, Flex, Heading, Tag, Text, Wrap, WrapItem } from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
-import EffortSlider from "../EffortSlider.jsx";
+import EffortSlider, { describeEffort } from "../EffortSlider.jsx";
 import { classifyTaskPriority } from "../matrix.js";
 
 const MotionCircle = motion(Box);
@@ -14,6 +14,11 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
   const priority = providedPriority ?? classifyTaskPriority(task);
   const urgencyColorScheme = priority.isUrgent ? "red" : "gray";
   const importanceColorScheme = priority.isImportant ? "teal" : "gray";
+  const effortDescriptor = describeEffort(task.effort);
+  const hasEffort = task.effort != null;
+  const projectLabel = task.project?.trim();
+  const hasProject = Boolean(projectLabel);
+  const hasDueDate = Boolean(task.due);
 
   const handleEffortUpdate = useCallback(
     (value) => {
@@ -64,14 +69,14 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
       cursor={draggable ? "grab" : "pointer"}
       borderWidth="1px"
       borderRadius="xl"
-      p={3.5}
+      p={3}
       bg={task.done ? "gray.100" : "white"}
       boxShadow={isDragging ? "lg" : "sm"}
       transition="all 0.15s ease"
       _hover={{ boxShadow: "lg", transform: "translateY(-2px)" }}
       display="flex"
       flexDirection="column"
-      gap={2.5}
+      gap={2}
     >
       <Flex align="flex-start" gap={3}>
         <MotionCircle
@@ -100,44 +105,59 @@ export default function TaskCard({ item, onEdit, onToggleDone, onEffortChange, d
           <Heading as="h3" size="xs" noOfLines={2}>
             {task.title}
           </Heading>
-          <Text fontSize="xs" color="gray.500" noOfLines={2}>
+          <Text fontSize="xs" color="gray.500" noOfLines={2} mt={0.5}>
             {task.notes ? task.notes : "Click to edit details"}
           </Text>
+          {hasProject || hasDueDate ? (
+            <Wrap spacing={1} mt={1} shouldWrapChildren>
+              {hasProject ? (
+                <WrapItem>
+                  <Tag size="xs" variant="subtle" colorScheme="purple">
+                    {projectLabel}
+                  </Tag>
+                </WrapItem>
+              ) : null}
+              {hasDueDate ? (
+                <WrapItem>
+                  <Tag size="xs" variant="subtle" colorScheme="orange">
+                    Due {task.due}
+                  </Tag>
+                </WrapItem>
+              ) : null}
+            </Wrap>
+          ) : null}
         </Box>
       </Flex>
-      <Box
-        onClick={(event) => event.stopPropagation()}
-        onMouseDown={(event) => event.stopPropagation()}
-        onTouchStart={(event) => event.stopPropagation()}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
-      </Box>
-      <Wrap spacing={1.5} shouldWrapChildren>
+      <Flex align="center" gap={2}>
+        <Box
+          flex="1"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onTouchStart={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <EffortSlider value={task.effort} onChange={handleEffortUpdate} size="sm" isCompact />
+        </Box>
+        <Text
+          fontSize="xs"
+          color={isDragging ? "purple.500" : hasEffort ? "gray.600" : "gray.400"}
+          fontWeight={isDragging ? "semibold" : "medium"}
+          whiteSpace="nowrap"
+        >
+          {hasEffort ? effortDescriptor.label : "Set effort"}
+        </Text>
+      </Flex>
+      <Wrap spacing={1} shouldWrapChildren>
         <WrapItem>
-          <Tag size="sm" variant="subtle" colorScheme={urgencyColorScheme}>
+          <Tag size="xs" variant="subtle" colorScheme={urgencyColorScheme}>
             {priority.urgencyLabel}
           </Tag>
         </WrapItem>
         <WrapItem>
-          <Tag size="sm" variant="subtle" colorScheme={importanceColorScheme}>
+          <Tag size="xs" variant="subtle" colorScheme={importanceColorScheme}>
             {priority.importanceLabel}
           </Tag>
         </WrapItem>
-        {task.project ? (
-          <WrapItem>
-            <Tag size="sm" variant="subtle" colorScheme="purple">
-              {task.project}
-            </Tag>
-          </WrapItem>
-        ) : null}
-        {task.due ? (
-          <WrapItem>
-            <Tag size="sm" variant="subtle" colorScheme="orange">
-              Due {task.due}
-            </Tag>
-          </WrapItem>
-        ) : null}
       </Wrap>
     </Box>
   );

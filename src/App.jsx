@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Container, Stack, useClipboard, useDisclosure } from "@chakra-ui/react";
+import { Box, Container, Stack, Tab, TabList, TabPanel, TabPanels, Tabs, useClipboard, useDisclosure } from "@chakra-ui/react";
 import {
   addProject as addProjectHelper,
   buildSnapshot,
@@ -51,6 +51,7 @@ export default function App() {
   const [jsonParsed, setJsonParsed] = useState(null);
   const [isJsonSaving, setIsJsonSaving] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(false);
+  const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
@@ -597,25 +598,47 @@ export default function App() {
           sortMode={projectSortMode}
           onSortModeChange={handleProjectSortModeChange}
         />
-        <Stack spacing={6}>
-          <PriorityMatrixSection
-            matrix={matrix}
-            sortMode={matrixSortMode}
-            onSortModeChange={handleMatrixSortChange}
-            onEditTask={handleOpenEditor}
-            onToggleTask={handleToggleDone}
-            onDropTask={handleMatrixDrop}
-            onEffortChange={handleEffortCommit}
-          />
-          <ProjectsPanel
-            projectGroups={projectGroups}
-            onManageProjects={projectManagerDisclosure.onOpen}
-            onEditTask={handleOpenEditor}
-            onToggleTask={handleToggleDone}
-            onDropProject={handleProjectDrop}
-            onEffortChange={handleEffortCommit}
-          />
-        </Stack>
+        <Tabs
+          index={workspaceTabIndex}
+          onChange={setWorkspaceTabIndex}
+          variant="enclosed"
+          colorScheme="purple"
+          isLazy
+        >
+          <TabList>
+            <Tab>Priority matrix</Tab>
+            <Tab>Projects</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel px={0} pt={4} pb={0}>
+              <Box
+                maxH={{ base: "none", lg: "70vh" }}
+                overflowY={{ base: "visible", lg: "auto" }}
+                pr={{ lg: 2 }}
+              >
+                <PriorityMatrixSection
+                  matrix={matrix}
+                  sortMode={matrixSortMode}
+                  onSortModeChange={handleMatrixSortChange}
+                  onEditTask={handleOpenEditor}
+                  onToggleTask={handleToggleDone}
+                  onDropTask={handleMatrixDrop}
+                  onEffortChange={handleEffortCommit}
+                />
+              </Box>
+            </TabPanel>
+            <TabPanel px={0} pt={4}>
+              <ProjectsPanel
+                projectGroups={projectGroups}
+                onManageProjects={projectManagerDisclosure.onOpen}
+                onEditTask={handleOpenEditor}
+                onToggleTask={handleToggleDone}
+                onDropProject={handleProjectDrop}
+                onEffortChange={handleEffortCommit}
+              />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </Stack>
       <ProjectManagerModal
         isOpen={projectManagerDisclosure.isOpen}

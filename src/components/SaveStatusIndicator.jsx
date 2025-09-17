@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Badge, Button, HStack, Spinner, Text } from "@chakra-ui/react";
-import { CheckCircleIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { Badge, Button, HStack, IconButton, Spinner, Text, Tooltip } from "@chakra-ui/react";
+import { CheckCircleIcon, DownloadIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 
 const MotionBadge = motion(Badge);
@@ -11,6 +11,22 @@ function SaveCallToAction({ label, variant = "outline", onClick }) {
     <Button size="xs" variant={variant} onClick={onClick}>
       {label}
     </Button>
+  );
+}
+
+function ManualSaveButton({ onClick, isDisabled }) {
+  if (!onClick) return null;
+  return (
+    <Tooltip label="Save now" placement="top">
+      <IconButton
+        aria-label="Save now"
+        icon={<DownloadIcon />}
+        size="sm"
+        variant="ghost"
+        onClick={onClick}
+        isDisabled={isDisabled}
+      />
+    </Tooltip>
   );
 }
 
@@ -101,11 +117,13 @@ function useIndicatorContent(state) {
 export default function SaveStatusIndicator({ state, onSave }) {
   const { content, action } = useIndicatorContent(state ?? { status: "idle" });
   const showAction = action && onSave;
+  const isSaving = state?.status === "saving";
 
   return (
     <HStack spacing={3} align="center">
       {content}
       {showAction ? <SaveCallToAction {...action} onClick={onSave} /> : null}
+      <ManualSaveButton onClick={onSave} isDisabled={isSaving} />
     </HStack>
   );
 }
