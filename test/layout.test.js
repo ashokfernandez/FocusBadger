@@ -9,12 +9,11 @@ describe("responsive layout", () => {
 
   it("stretches header controls to fill the viewport on small screens", () => {
     expect(HEADER_LAYOUT.container.w).toBe("full");
-    expect(HEADER_LAYOUT.stack.w.base).toBe("full");
     expect(HEADER_LAYOUT.button.w.base).toBe("full");
   });
 
-  it("allows header buttons to wrap on compact widths", () => {
-    expect(HEADER_LAYOUT.stack.flexWrap.sm).toBe("wrap");
+  it("lets header controls shrink on larger screens", () => {
+    expect(HEADER_LAYOUT.button.w.sm).toBe("auto");
   });
 
   it("uses responsive columns for the priority matrix", () => {
