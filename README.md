@@ -135,7 +135,7 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 - [x] Open tasks file via File System Access API <!-- TASK:ui-open --> (commit e3c682c)
 - [x] Render columns by bucket and sort by score desc <!-- TASK:ui-render --> (commit e3c682c)
 - [x] Toggle done on click and update `updated` timestamp <!-- TASK:ui-toggle --> (commit 0d6f7fd)
-- [x] Save to the same file handle using `toJSONL` <!-- TASK:ui-save --> (commit e3c682c)
+- [x] Save to the same file handle using `toJSONL` with autosave indicator <!-- TASK:ui-save --> (commit 910dcd2)
 - [x] Sample tasks file for quick demo <!-- TASK:ui-sample --> (commit ca1b3b7)
 
 ### Interactions
