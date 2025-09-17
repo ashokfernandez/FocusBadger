@@ -25,6 +25,7 @@ One JSON object per line in `tasks.jsonl`. Comment lines that start with `#` are
 
 ```json
 {"id":"abc123","title":"Write weekly report","done":false,"project":"Work","due":"2025-09-19","importance":3,"urgency":2,"effort":2,"tags":["report"],"notes":"Short note","created":"2025-09-17T08:00:00Z","updated":"2025-09-17T08:00:00Z"}
+{"type":"project","name":"Work"}
 ```
 
 Rules
@@ -33,6 +34,7 @@ Rules
 - Optional: `id`, `done`, `project`, `due` (YYYY-MM-DD), `importance` 0 to 5, `urgency` 0 to 5, `effort` 1 to 5, `tags`, `notes`, `created`, `updated`
 - Priority score: `score = 2*importance + urgency - effort`
 - UI buckets: `Today`, `This week`, `Later`, `No date`, `Done`
+- Projects can be declared explicitly with `{ "type": "project", "name": "..." }`
 
 LLM editing guardrails
 
@@ -136,6 +138,7 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 - [x] Render columns by bucket and sort by score desc <!-- TASK:ui-render --> (commit e3c682c)
 - [x] Toggle done on click and update `updated` timestamp <!-- TASK:ui-toggle --> (commit 0d6f7fd)
 - [x] Save to the same file handle using `toJSONL` with autosave indicator <!-- TASK:ui-save --> (commit 910dcd2)
+- [x] Manage project list (add/rename/delete) <!-- TASK:ui-projects --> (commit 7906360)
 - [x] Sample tasks file for quick demo <!-- TASK:ui-sample --> (commit ca1b3b7)
 
 ### Interactions
