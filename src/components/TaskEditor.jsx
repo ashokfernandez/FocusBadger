@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   ButtonGroup,
-  Checkbox,
   FormControl,
   FormErrorMessage,
   FormLabel,
   Input,
+  InputGroup,
+  InputLeftElement,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -14,15 +15,16 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  NumberInput,
-  NumberInputField,
   Select,
   SimpleGrid,
   Stack,
+  Switch,
   Textarea
 } from "@chakra-ui/react";
+import { CheckIcon } from "@chakra-ui/icons";
 import EffortSlider from "../EffortSlider.jsx";
-import { sanitizeNumber, parseTags } from "../utils/taskFields.js";
+import { sanitizeNumber } from "../utils/taskFields.js";
+import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
 
 export default function TaskEditor({
   task,
@@ -36,10 +38,9 @@ export default function TaskEditor({
     title: task?.title ?? "",
     project: task?.project ?? "",
     due: task?.due ?? "",
-    importance: task?.importance ?? "",
-    urgency: task?.urgency ?? "",
+    importance: (task?.importance ?? 0) >= 3,
+    urgency: (task?.urgency ?? 0) >= 3,
     effort: task?.effort ?? undefined,
-    tags: task?.tags ? task.tags.join(", ") : "",
     notes: task?.notes ?? "",
     done: Boolean(task?.done),
     projectMode: task?.project ? "existing" : "none",
@@ -54,10 +55,9 @@ export default function TaskEditor({
       title: task?.title ?? "",
       project: task?.project ?? "",
       due: task?.due ?? "",
-      importance: task?.importance ?? "",
-      urgency: task?.urgency ?? "",
+      importance: (task?.importance ?? 0) >= 3,
+      urgency: (task?.urgency ?? 0) >= 3,
       effort: task?.effort ?? undefined,
-      tags: task?.tags ? task.tags.join(", ") : "",
       notes: task?.notes ?? "",
       done: Boolean(task?.done),
       projectMode: task?.project ? "existing" : "none",
@@ -66,6 +66,16 @@ export default function TaskEditor({
     setError("");
     setProjectError("");
   }, [task]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    requestAnimationFrame(() => {
+      if (titleRef.current) {
+        titleRef.current.focus();
+        titleRef.current.select();
+      }
+    });
+  }, [isOpen]);
 
   const handleChange = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -116,10 +126,9 @@ export default function TaskEditor({
         title,
         project: projectValue,
         due: form.due.trim() || undefined,
-        importance: sanitizeNumber(form.importance),
-        urgency: sanitizeNumber(form.urgency),
+        importance: form.importance ? 5 : undefined,
+        urgency: form.urgency ? 5 : undefined,
         effort: sanitizeNumber(form.effort),
-        tags: parseTags(form.tags),
         notes: form.notes.trim() || undefined,
         done: form.done
       };
@@ -131,7 +140,15 @@ export default function TaskEditor({
   return (
     <Modal isOpen={isOpen} onClose={onCancel} initialFocusRef={titleRef} size="lg">
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={handleSubmit}>
+      <ModalContent
+        as="form"
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+            handleSubmit(event);
+          }
+        }}
+      >
         <ModalHeader>Edit task</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
@@ -149,6 +166,9 @@ export default function TaskEditor({
               <FormControl isInvalid={Boolean(projectError)}>
                 <FormLabel>Project</FormLabel>
                 <Select
+                  variant="filled"
+                  focusBorderColor="blue.400"
+                  size="md"
                   value={form.projectMode === "new" ? "__new__" : form.project || ""}
                   onChange={(event) => handleProjectSelect(event.target.value)}
                 >
@@ -163,6 +183,8 @@ export default function TaskEditor({
                 {form.projectMode === "new" ? (
                   <Input
                     mt={2}
+                    variant="filled"
+                    focusBorderColor="blue.400"
                     placeholder="New project name"
                     value={form.newProjectName}
                     onChange={(event) => handleNewProjectNameChange(event.target.value)}
@@ -172,65 +194,116 @@ export default function TaskEditor({
               </FormControl>
               <FormControl>
                 <FormLabel>Due date</FormLabel>
-                <Input
-                  type="date"
-                  value={form.due}
-                  onChange={(event) => handleChange("due", event.target.value)}
-                />
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none" color="gray.400">
+                    📅
+                  </InputLeftElement>
+                  <Input
+                    pl={10}
+                    type="date"
+                    variant="filled"
+                    focusBorderColor="blue.400"
+                    value={form.due}
+                    onChange={(event) => handleChange("due", event.target.value)}
+                  />
+                </InputGroup>
               </FormControl>
             </SimpleGrid>
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <FormControl>
-                <FormLabel>Importance</FormLabel>
-                <NumberInput
-                  min={0}
-                  value={form.importance}
-                  onChange={(valueString) => handleChange("importance", valueString)}
-                >
-                  <NumberInputField inputMode="numeric" />
-                </NumberInput>
+              <FormControl display="flex" alignItems="center">
+                <Switch
+                  id="edit-importance-toggle"
+                  isChecked={form.importance}
+                  onChange={(event) => handleChange("importance", event.target.checked)}
+                  colorScheme="purple"
+                  mr={3}
+                />
+                <FormLabel htmlFor="edit-importance-toggle" mb={0}>
+                  Important
+                </FormLabel>
               </FormControl>
-              <FormControl>
-                <FormLabel>Urgency</FormLabel>
-                <NumberInput
-                  min={0}
-                  value={form.urgency}
-                  onChange={(valueString) => handleChange("urgency", valueString)}
-                >
-                  <NumberInputField inputMode="numeric" />
-                </NumberInput>
+              <FormControl display="flex" alignItems="center">
+                <Switch
+                  id="edit-urgency-toggle"
+                  isChecked={form.urgency}
+                  onChange={(event) => handleChange("urgency", event.target.checked)}
+                  colorScheme="orange"
+                  mr={3}
+                />
+                <FormLabel htmlFor="edit-urgency-toggle" mb={0}>
+                  Urgent
+                </FormLabel>
               </FormControl>
             </SimpleGrid>
-            <EffortSlider value={form.effort} onChange={handleEffortChange} />
             <FormControl>
-              <FormLabel>Tags (comma separated)</FormLabel>
-              <Input
-                value={form.tags}
-                onChange={(event) => handleChange("tags", event.target.value)}
+              <EffortSlider
+                value={form.effort ?? 3}
+                defaultValue={3}
+                onChange={handleEffortChange}
+                isAlwaysVisible
               />
             </FormControl>
             <FormControl>
               <FormLabel>Notes</FormLabel>
               <Textarea
                 rows={4}
+                variant="filled"
+                focusBorderColor="blue.400"
                 value={form.notes}
                 onChange={(event) => handleChange("notes", event.target.value)}
               />
             </FormControl>
-            <Checkbox
-              isChecked={form.done}
-              onChange={(event) => handleChange("done", event.target.checked)}
-            >
-              Mark as done
-            </Checkbox>
           </Stack>
         </ModalBody>
-        <ModalFooter>
-          <ButtonGroup spacing={3}>
+        <ModalFooter
+          display="flex"
+          flexDirection={{ base: "column", sm: "row" }}
+          alignItems={{ base: "stretch", sm: "center" }}
+          justifyContent="space-between"
+          gap={3}
+        >
+          <Button
+            leftIcon={<CheckIcon />}
+            onClick={() => handleChange("done", !form.done)}
+            aria-pressed={form.done}
+            size="md"
+            fontWeight="semibold"
+            borderRadius="full"
+            px={6}
+            colorScheme="purple"
+            variant={form.done ? "solid" : "outline"}
+            color={form.done ? "white" : "purple.600"}
+            bgGradient={form.done ? WORKSPACE_HEADER_MENU_STYLES.gradient : undefined}
+            borderColor={form.done ? undefined : "purple.500"}
+            boxShadow={form.done ? "lg" : "md"}
+            _hover={
+              form.done
+                ? { bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "xl" }
+                : { bg: "purple.50" }
+            }
+            _active={
+              form.done
+                ? { bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "xl" }
+                : { bg: "purple.100" }
+            }
+          >
+            {form.done ? "Marked as Done" : "Mark as Done"}
+          </Button>
+          <ButtonGroup spacing={3} ml={{ base: 0, sm: "auto" }}>
             <Button variant="ghost" onClick={onCancel}>
               Cancel
             </Button>
-            <Button colorScheme="blue" type="submit">
+            <Button
+              type="submit"
+              fontWeight="semibold"
+              borderRadius="full"
+              px={6}
+              color="white"
+              bgGradient={WORKSPACE_HEADER_MENU_STYLES.gradient}
+              boxShadow="md"
+              _hover={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.hover, boxShadow: "lg" }}
+              _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active, boxShadow: "lg" }}
+            >
               Save
             </Button>
           </ButtonGroup>

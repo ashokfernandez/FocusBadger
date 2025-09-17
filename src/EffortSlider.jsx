@@ -25,7 +25,14 @@ function describeEffort(value) {
   return { label: "Deep focus", colorScheme: "red" };
 }
 
-export function EffortSlider({ value, onChange, size = "md", isCompact = false, defaultValue = DEFAULT_EFFORT }) {
+export function EffortSlider({
+  value,
+  onChange,
+  size = "md",
+  isCompact = false,
+  defaultValue = DEFAULT_EFFORT,
+  isAlwaysVisible = false
+}) {
   const [internalValue, setInternalValue] = useState(() => clampEffort(value ?? defaultValue));
   const committedValueRef = useRef(clampEffort(value ?? defaultValue));
   const [isExpanded, setIsExpanded] = useState(false);
@@ -60,9 +67,10 @@ export function EffortSlider({ value, onChange, size = "md", isCompact = false, 
   const badgeVariant = hasDefinedValue ? "solid" : "subtle";
 
   const fontSize = size === "sm" ? "xs" : "sm";
-  const isSliderVisible = isExpanded || isHovering || isFocused;
+  const isSliderVisible = isAlwaysVisible || isExpanded || isHovering || isFocused;
 
   const handleToggleVisibility = () => {
+    if (isAlwaysVisible) return;
     setIsExpanded((prev) => {
       const next = !prev;
       if (!next) {
@@ -72,6 +80,23 @@ export function EffortSlider({ value, onChange, size = "md", isCompact = false, 
       return next;
     });
   };
+
+  const handleBadgeKeyDown = (event) => {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      handleToggleVisibility();
+    }
+  };
+
+  const toggleProps = isAlwaysVisible
+    ? { as: "span", cursor: "default" }
+    : {
+        as: "button",
+        type: "button",
+        cursor: "pointer",
+        onClick: handleToggleVisibility,
+        onKeyDown: handleBadgeKeyDown
+      };
 
   return (
     <Box
@@ -90,25 +115,23 @@ export function EffortSlider({ value, onChange, size = "md", isCompact = false, 
         </Text>
         <HStack spacing={2} align="center">
           <Badge
-            as="button"
-            type="button"
-            onClick={handleToggleVisibility}
-            onKeyDown={(event) => {
-              if (event.key === " " || event.key === "Enter") {
-                event.preventDefault();
-                handleToggleVisibility();
-              }
-            }}
+            {...toggleProps}
             colorScheme={descriptor.colorScheme}
             variant={badgeVariant}
             fontSize={fontSize}
             borderRadius="full"
             px={3}
             py={0.5}
-            aria-pressed={isExpanded}
+            aria-pressed={isAlwaysVisible ? undefined : isExpanded}
             aria-controls={sliderId}
             aria-expanded={isSliderVisible}
-            title={isSliderVisible ? "Hide effort slider" : "Adjust effort"}
+            title={
+              isAlwaysVisible
+                ? "Effort level"
+                : isSliderVisible
+                ? "Hide effort slider"
+                : "Adjust effort"
+            }
           >
             {badgeText}
           </Badge>
