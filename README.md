@@ -58,15 +58,17 @@ src/
   jsonl.js             parseJSONL(text), toJSONL(array)
   projects.js          helpers for project lists and snapshots
   matrix.js            constants and filters for matrix view
-  projects.js          helpers for project lists and snapshots
+  jsonEditor.js        export helpers and validation for JSON editing
 
 public/
-  tasks.sample.jsonl   Example tasks served verbatim
+  tasks.json           Hosted demo snapshot for GitHub Pages
+  tasks.sample.jsonl   Legacy example tasks (JSONL)
 
 test/
   model.test.js        Unit tests for scoring and bucketing
   jsonl.test.js        Unit tests for JSONL helpers
   matrix.test.js       Matrix filtering logic
+  jsonEditor.test.js   JSON import/export validation
   projects.test.js     Project helper mutations
 
 .github/workflows/
@@ -116,6 +118,13 @@ Pull requests
 - Screenshots or short notes for UI changes
 - CI green before merge
 
+### JSON workflows
+
+- `Show JSON` opens a modal with the current snapshot formatted for copying, complete with a clipboard button.
+- `Paste JSON` accepts either JSON arrays or newline-delimited JSON (JSONL). Validation runs live and disables Save until every task has a title.
+- Saving from the modal overwrites the linked `tasks.jsonl` when the File System Access API is available, or leaves the UI in an “unsynced” state when running on GitHub Pages.
+- Hosted builds ship with `/tasks.json`, so visitors can try the board online without a local file handle.
+
 ### GitHub Pages
 
 - `.github/workflows/deploy.yml` builds on pushes to `main` and publishes the site via GitHub Pages.
@@ -153,6 +162,7 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 - [x] Save to the same file handle using `toJSONL` with autosave indicator <!-- TASK:ui-save --> (commit 910dcd2)
 - [x] Manage project list (add/rename/delete) <!-- TASK:ui-projects --> (commit 7906360)
 - [x] Sample tasks file for quick demo <!-- TASK:ui-sample --> (commit ca1b3b7)
+- [x] JSON export/import modal <!-- TASK:ui-json --> (PR #9)
 
 ### Interactions
 
