@@ -97,6 +97,7 @@ Install and run
 npm install
 npm run dev   # hot reload at http://localhost:5173
 npm test      # unit tests with Vitest
+npm run build # production build (outputs dist/)
 ```
 
 Conventional commits
@@ -114,6 +115,13 @@ Pull requests
 - Tests updated
 - Screenshots or short notes for UI changes
 - CI green before merge
+
+### GitHub Pages
+
+- `.github/workflows/deploy.yml` builds on pushes to `main` and publishes the site via GitHub Pages.
+- Enable Pages under **Settings → Pages → Build and deployment → GitHub Actions**.
+- The Vite config uses a relative `base`, so the published site works at `https://<user>.github.io/TaskBadger/` while still running locally.
+- File System Access API continues to read/write your local `tasks.jsonl` when opened in a compatible browser.
 
 ---
 
