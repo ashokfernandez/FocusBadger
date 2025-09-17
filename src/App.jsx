@@ -14,6 +14,10 @@ import {
   HStack,
   IconButton,
   Input,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -35,7 +39,7 @@ import {
   WrapItem,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, ChevronDownIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import { parseJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
@@ -148,7 +152,7 @@ function MatrixFilterChips({ options, active, onToggle, children }) {
   const extraItems = useMemo(() => Children.toArray(children), [children]);
 
   return (
-    <Wrap spacing={2} mt={1}>
+    <Wrap spacing={{ base: 2, md: 3 }} mt={1}>
       {options.map((option) => {
         const selected = active.includes(option);
         return (
@@ -225,6 +229,11 @@ function GlobalToolbar({
     []
   );
 
+  const activeSortLabel = useMemo(() => {
+    const match = sortOptions.find((option) => option.value === sortMode);
+    return match ? match.label : sortOptions[0].label;
+  }, [sortOptions, sortMode]);
+
   return (
     <Box
       bg="white"
@@ -237,45 +246,39 @@ function GlobalToolbar({
       data-testid="workspace-toolbar"
     >
       <Stack spacing={{ base: 3, md: 4 }}>
-        <Box>
-          <Heading size="sm" color="gray.700">
-            Workspace filters
-          </Heading>
-          <Text fontSize="sm" color="gray.500">
-            Choose which projects appear and how task lists are ordered.
-          </Text>
-        </Box>
+        <Text fontSize="sm" color="gray.500">
+          Filters apply across the workspace. Pick the projects you need and choose a sort for project lists.
+        </Text>
         <MatrixFilterChips options={filterOptions} active={activeFilters} onToggle={onToggleFilter}>
-          <Box
-            minW={{ base: "100%", sm: "220px" }}
-            bg="gray.50"
-            borderRadius="full"
-            px={3}
-            py={1.5}
-          >
-            <Text
-              fontSize="xs"
-              textTransform="uppercase"
-              letterSpacing="wide"
-              color="gray.500"
-              mb={1}
-            >
-              Sort projects
-            </Text>
-            <Select
-              size="sm"
-              value={sortMode}
-              onChange={(event) => onSortModeChange?.(event.target.value)}
-              bg="white"
+          <Menu>
+            <MenuButton
+              as={Button}
+              size="xs"
+              variant="outline"
+              colorScheme="purple"
+              rightIcon={<ChevronDownIcon />}
               data-testid="project-sort-select"
             >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </Box>
+              Sort: {activeSortLabel}
+            </MenuButton>
+            <MenuList>
+              {sortOptions.map((option) => {
+                const isActive = option.value === sortMode;
+                return (
+                  <MenuItem
+                    key={option.value}
+                    onClick={() => {
+                      if (isActive) return;
+                      onSortModeChange?.(option.value);
+                    }}
+                    fontWeight={isActive ? "semibold" : "normal"}
+                  >
+                    {option.label}
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          </Menu>
         </MatrixFilterChips>
       </Stack>
     </Box>
