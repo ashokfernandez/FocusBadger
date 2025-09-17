@@ -1,10 +1,13 @@
 import { Children, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
+  AlertIcon,
   Badge,
   Box,
   Button,
   ButtonGroup,
   Checkbox,
+  CloseButton,
   Container,
   Flex,
   FormControl,
@@ -45,7 +48,7 @@ import {
   useClipboard,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, ChevronDownIcon, CopyIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, ChevronDownIcon, CopyIcon, DeleteIcon, EditIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import { bucket, score } from "./model.js";
 import {
@@ -308,7 +311,7 @@ function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreateProjec
   );
 }
 
-function SaveStatusIndicator({ state }) {
+function SaveStatusIndicator({ state, onSave }) {
   if (state.status === "saving") {
     return (
       <HStack spacing={2} color="blue.500" fontSize="sm">
@@ -320,35 +323,56 @@ function SaveStatusIndicator({ state }) {
 
   if (state.status === "saved") {
     return (
-      <MotionBadge
-        colorScheme="green"
-        variant="subtle"
-        fontSize="xs"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.25 }}
-        display="inline-flex"
-        alignItems="center"
-        gap={1}
-      >
-        <CheckCircleIcon /> Saved
-      </MotionBadge>
+      <HStack spacing={3} align="center">
+        <MotionBadge
+          colorScheme="green"
+          variant="subtle"
+          fontSize="xs"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.25 }}
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+        >
+          <CheckCircleIcon /> Saved
+        </MotionBadge>
+        {onSave ? (
+          <Button size="xs" variant="outline" onClick={onSave}>
+            Save anyway
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
   if (state.status === "dirty") {
     return (
-      <Badge colorScheme="orange" variant="subtle" fontSize="xs">
-        Unsaved changes
-      </Badge>
+      <HStack spacing={3} align="center">
+        <Badge colorScheme="orange" variant="subtle" fontSize="xs">
+          Unsaved changes
+        </Badge>
+        {onSave ? (
+          <Button size="xs" colorScheme="orange" onClick={onSave}>
+            Save now
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
   if (state.status === "unsynced") {
     return (
-      <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-        Changes not linked to a file
-      </Badge>
+      <HStack spacing={3} align="center">
+        <Badge colorScheme="purple" variant="subtle" fontSize="xs">
+          Unsynced changes
+        </Badge>
+        {onSave ? (
+          <Button size="xs" variant="outline" onClick={onSave}>
+            Save
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
@@ -362,9 +386,16 @@ function SaveStatusIndicator({ state }) {
   }
 
   return (
-    <Badge colorScheme="gray" variant="subtle" fontSize="xs">
-      Ready
-    </Badge>
+    <HStack spacing={3} align="center">
+      <Badge colorScheme="gray" variant="subtle" fontSize="xs">
+        Ready
+      </Badge>
+      {onSave ? (
+        <Button size="xs" variant="outline" onClick={onSave}>
+          Save now
+        </Button>
+      ) : null}
+    </HStack>
   );
 }
 
@@ -1204,6 +1235,7 @@ export default function App() {
   const [jsonError, setJsonError] = useState("");
   const [jsonParsed, setJsonParsed] = useState(null);
   const [isJsonSaving, setIsJsonSaving] = useState(false);
+  const [showDemoBanner, setShowDemoBanner] = useState(false);
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
@@ -1236,6 +1268,13 @@ export default function App() {
       setJsonError(initial.error ?? "");
     }
   }, [jsonModal.isOpen, jsonExportText]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.showOpenFilePicker) {
+      setShowDemoBanner(true);
+    }
+  }, []);
 
   useEffect(() => {
     setMatrixFilters((prev) => {
@@ -1660,6 +1699,7 @@ export default function App() {
         setProjects(projectList);
         setTasks(taskRecords);
         setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
+        setShowDemoBanner(false);
         return;
       } catch (error) {
         console.error(error);
@@ -1715,6 +1755,21 @@ export default function App() {
   return (
     <Container maxW="7xl" py={10}>
       <Stack spacing={10}>
+        {showDemoBanner ? (
+          <Alert status="info" variant="left-accent" borderRadius="xl" alignItems="center">
+            <AlertIcon />
+            <Box flex="1">
+              <Text fontWeight="medium">Exploring TaskBadger online?</Text>
+              <Text fontSize="sm" color="gray.700">
+                Load demo data to try the workspace without linking a local file. You can dismiss this banner after loading.
+              </Text>
+            </Box>
+            <Button size="sm" colorScheme="purple" onClick={handleLoadSample} mr={2}>
+              Load demo data
+            </Button>
+            <CloseButton position="static" onClick={() => setShowDemoBanner(false)} />
+          </Alert>
+        ) : null}
         <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
           <Box>
             <Heading size="lg">TaskBadger</Heading>
@@ -1722,36 +1777,31 @@ export default function App() {
               Focus on what matters
             </Text>
           </Box>
-          <Flex {...HEADER_LAYOUT.container}>
-            <SaveStatusIndicator state={saveState} />
-            <Stack {...HEADER_LAYOUT.stack}>
-              <Button
-                variant="outline"
-                onClick={projectManagerDisclosure.onOpen}
-                {...HEADER_LAYOUT.button}
-              >
-                Manage projects
-              </Button>
-              <Button variant="ghost" onClick={handleLoadSample} {...HEADER_LAYOUT.button}>
-                Load sample
-              </Button>
+        <Flex {...HEADER_LAYOUT.container}>
+          <SaveStatusIndicator state={saveState} onSave={handleSaveFile} />
+          <Wrap spacing={2} justify="flex-end">
+            <WrapItem>
               <Button colorScheme="purple" onClick={addTaskDisclosure.onOpen} {...HEADER_LAYOUT.button}>
                 Add task
               </Button>
+            </WrapItem>
+            <WrapItem>
+              <Button variant="outline" onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
+                Open file
+              </Button>
+            </WrapItem>
+            <WrapItem>
               <Button variant="outline" onClick={openJsonExport} {...HEADER_LAYOUT.button}>
-                Show JSON
+                Copy JSON
               </Button>
+            </WrapItem>
+            <WrapItem>
               <Button variant="outline" onClick={openJsonImport} {...HEADER_LAYOUT.button}>
-                Paste JSON
+                Apply JSON
               </Button>
-              <Button onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
-                Open tasks.jsonl
-              </Button>
-              <Button colorScheme="blue" onClick={handleSaveFile} {...HEADER_LAYOUT.button}>
-                Save
-              </Button>
-            </Stack>
-          </Flex>
+            </WrapItem>
+          </Wrap>
+        </Flex>
         </Flex>
 
         <GlobalToolbar
@@ -1835,11 +1885,24 @@ export default function App() {
 
           <Box>
             <Stack spacing={3} mb={4}>
-              <Heading size="md">Projects</Heading>
-              <Text fontSize="sm" color="gray.500">
-                Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
-                section stays in sync.
-              </Text>
+              <Flex align="center" justify="space-between">
+                <Box>
+                  <Heading size="md">Projects</Heading>
+                  <Text fontSize="sm" color="gray.500">
+                    Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
+                    section stays in sync.
+                  </Text>
+                </Box>
+                <Tooltip label="Manage projects" placement="top">
+                  <IconButton
+                    aria-label="Manage projects"
+                    icon={<EditIcon />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={projectManagerDisclosure.onOpen}
+                  />
+                </Tooltip>
+              </Flex>
             </Stack>
             <Stack spacing={5}>
               {projectGroups.map(({ name, projectKey, items }) => (
@@ -1893,17 +1956,20 @@ export default function App() {
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>JSON export &amp; import</ModalHeader>
+          <ModalHeader>Assistant workflow</ModalHeader>
           <ModalCloseButton isDisabled={isJsonSaving} />
           <ModalBody>
             <Tabs index={jsonTabIndex} onChange={handleJsonTabChange} isLazy isFitted variant="enclosed">
               <TabList>
-                <Tab>Show JSON</Tab>
-                <Tab>Update from JSON</Tab>
+                <Tab>Copy for assistant</Tab>
+                <Tab>Apply assistant output</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel px={0} pt={4} pb={2}>
                   <Stack spacing={4} align="flex-start">
+                    <Text fontSize="sm" color="gray.600">
+                      Share this payload with your LLM assistant. It includes projects first followed by tasks.
+                    </Text>
                     <Button
                       size="sm"
                       variant={clipboard.hasCopied ? "solid" : "outline"}
@@ -1932,6 +1998,9 @@ export default function App() {
                 </TabPanel>
                 <TabPanel px={0} pt={4} pb={2}>
                   <Stack spacing={4}>
+                    <Text fontSize="sm" color="gray.600">
+                      Paste the assistant output below. JSON arrays and JSONL are both accepted. We validate every task before applying.
+                    </Text>
                     <FormControl isInvalid={Boolean(jsonError)}>
                       <FormLabel>Paste updated JSON</FormLabel>
                       <Textarea
@@ -1961,7 +2030,7 @@ export default function App() {
                   isDisabled={!canSaveJson || isJsonSaving}
                   isLoading={isJsonSaving}
                 >
-                  Save JSON
+                  Apply JSON
                 </Button>
               ) : null}
             </HStack>
