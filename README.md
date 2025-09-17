@@ -60,6 +60,23 @@ src/
   matrix.js            constants and filters for matrix view
   jsonEditor.js        export helpers and validation for JSON editing
   taskFactory.js       helpers for creating new task payloads
+  components/
+    AddTaskModal.jsx        modal for creating new tasks
+    AssistantWorkflowModal.jsx assistant JSON import/export surface
+    DemoDataBanner.jsx      alert prompting demo data load
+    GlobalToolbar.jsx       workspace filters and project sorter
+    MatrixFilterChips.jsx   shared project filter chip list
+    MatrixQuadrant.jsx      Eisenhower matrix column renderer
+    MatrixSortControl.jsx   controls for matrix sorting options
+    ProjectManagerModal.jsx project CRUD modal with inline rename
+    ProjectSection.jsx      project drop zone and task list renderer
+    SaveStatusIndicator.jsx animated sync status pill
+    TaskCard.jsx            card for individual task rendering
+    TaskEditor.jsx          modal for editing task details
+    PriorityMatrixSection.jsx priority matrix wrapper and copy
+    ProjectsPanel.jsx       projects list with manage affordance
+    WorkspaceHeader.jsx     file management and assistant entry points
+    componentTokens.js      shared layout constants for responsive tests
 
 public/
   tasks.json           Hosted demo snapshot for GitHub Pages

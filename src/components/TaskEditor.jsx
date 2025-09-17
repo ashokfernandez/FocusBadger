@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
+  ButtonGroup,
+  Checkbox,
   FormControl,
   FormErrorMessage,
   FormLabel,
@@ -14,48 +16,56 @@ import {
   ModalOverlay,
   NumberInput,
   NumberInputField,
-  SimpleGrid,
   Select,
+  SimpleGrid,
   Stack,
   Textarea
 } from "@chakra-ui/react";
 import EffortSlider from "../EffortSlider.jsx";
 import { sanitizeNumber, parseTags } from "../utils/taskFields.js";
 
-export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreateProject }) {
-  const [form, setForm] = useState({
-    title: "",
-    project: "",
-    due: "",
-    importance: "",
-    urgency: "",
-    effort: 3,
-    tags: "",
-    notes: "",
-    projectMode: "none",
+export default function TaskEditor({
+  task,
+  isOpen,
+  onCancel,
+  onSave,
+  projects = [],
+  onCreateProject
+}) {
+  const [form, setForm] = useState(() => ({
+    title: task?.title ?? "",
+    project: task?.project ?? "",
+    due: task?.due ?? "",
+    importance: task?.importance ?? "",
+    urgency: task?.urgency ?? "",
+    effort: task?.effort ?? undefined,
+    tags: task?.tags ? task.tags.join(", ") : "",
+    notes: task?.notes ?? "",
+    done: Boolean(task?.done),
+    projectMode: task?.project ? "existing" : "none",
     newProjectName: ""
-  });
+  }));
   const [error, setError] = useState("");
   const [projectError, setProjectError] = useState("");
   const titleRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen) return;
     setForm({
-      title: "",
-      project: "",
-      due: "",
-      importance: "",
-      urgency: "",
-      effort: 3,
-      tags: "",
-      notes: "",
-      projectMode: "none",
+      title: task?.title ?? "",
+      project: task?.project ?? "",
+      due: task?.due ?? "",
+      importance: task?.importance ?? "",
+      urgency: task?.urgency ?? "",
+      effort: task?.effort ?? undefined,
+      tags: task?.tags ? task.tags.join(", ") : "",
+      notes: task?.notes ?? "",
+      done: Boolean(task?.done),
+      projectMode: task?.project ? "existing" : "none",
       newProjectName: ""
     });
     setError("");
     setProjectError("");
-  }, [isOpen]);
+  }, [task]);
 
   const handleChange = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -89,8 +99,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
         setError("Title is required");
         return;
       }
-
-      let projectValue = undefined;
+      let projectValue;
       if (form.projectMode === "new") {
         const result = onCreateProject?.(form.newProjectName ?? "");
         if (!result || !result.ok) {
@@ -100,9 +109,10 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
         projectValue = result.name;
       } else if (form.projectMode === "existing") {
         projectValue = form.project || undefined;
+      } else {
+        projectValue = undefined;
       }
-
-      const payload = {
+      const changes = {
         title,
         project: projectValue,
         due: form.due.trim() || undefined,
@@ -110,24 +120,19 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
         urgency: sanitizeNumber(form.urgency),
         effort: sanitizeNumber(form.effort),
         tags: parseTags(form.tags),
-        notes: form.notes.trim() || undefined
+        notes: form.notes.trim() || undefined,
+        done: form.done
       };
-
-      const outcome = onCreate(payload);
-      if (!outcome?.ok) {
-        setError(outcome?.error ?? "Unable to create task");
-        return;
-      }
-      onClose();
+      onSave(changes);
     },
-    [form, onCreate, onCreateProject, onClose]
+    [form, onCreateProject, onSave]
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} initialFocusRef={titleRef} size="lg">
+    <Modal isOpen={isOpen} onClose={onCancel} initialFocusRef={titleRef} size="lg">
       <ModalOverlay />
       <ModalContent as="form" onSubmit={handleSubmit}>
-        <ModalHeader>Add task</ModalHeader>
+        <ModalHeader>Edit task</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <Stack spacing={5}>
@@ -144,9 +149,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               <FormControl isInvalid={Boolean(projectError)}>
                 <FormLabel>Project</FormLabel>
                 <Select
-                  value={
-                    form.projectMode === "new" ? "__new__" : form.project || ""
-                  }
+                  value={form.projectMode === "new" ? "__new__" : form.project || ""}
                   onChange={(event) => handleProjectSelect(event.target.value)}
                 >
                   <option value="">No project</option>
@@ -175,43 +178,33 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
                   onChange={(event) => handleChange("due", event.target.value)}
                 />
               </FormControl>
+            </SimpleGrid>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
               <FormControl>
                 <FormLabel>Importance</FormLabel>
                 <NumberInput
                   min={0}
-                  max={5}
                   value={form.importance}
-                  onChange={(value) => handleChange("importance", value)}
+                  onChange={(valueString) => handleChange("importance", valueString)}
                 >
-                  <NumberInputField placeholder="0-5" />
+                  <NumberInputField inputMode="numeric" />
                 </NumberInput>
               </FormControl>
               <FormControl>
                 <FormLabel>Urgency</FormLabel>
                 <NumberInput
                   min={0}
-                  max={5}
                   value={form.urgency}
-                  onChange={(value) => handleChange("urgency", value)}
+                  onChange={(valueString) => handleChange("urgency", valueString)}
                 >
-                  <NumberInputField placeholder="0-5" />
+                  <NumberInputField inputMode="numeric" />
                 </NumberInput>
               </FormControl>
             </SimpleGrid>
+            <EffortSlider value={form.effort} onChange={handleEffortChange} />
             <FormControl>
-              <FormLabel>Effort</FormLabel>
-              <EffortSlider
-                value={form.effort}
-                defaultValue={3}
-                onChange={handleEffortChange}
-                size="sm"
-                isCompact
-              />
-            </FormControl>
-            <FormControl>
-              <FormLabel>Tags</FormLabel>
+              <FormLabel>Tags (comma separated)</FormLabel>
               <Input
-                placeholder="comma separated"
                 value={form.tags}
                 onChange={(event) => handleChange("tags", event.target.value)}
               />
@@ -219,26 +212,30 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
             <FormControl>
               <FormLabel>Notes</FormLabel>
               <Textarea
+                rows={4}
                 value={form.notes}
                 onChange={(event) => handleChange("notes", event.target.value)}
-                rows={3}
               />
             </FormControl>
+            <Checkbox
+              isChecked={form.done}
+              onChange={(event) => handleChange("done", event.target.checked)}
+            >
+              Mark as done
+            </Checkbox>
           </Stack>
         </ModalBody>
         <ModalFooter>
-          <Stack direction="row" spacing={3}>
-            <Button variant="ghost" onClick={onClose}>
+          <ButtonGroup spacing={3}>
+            <Button variant="ghost" onClick={onCancel}>
               Cancel
             </Button>
             <Button colorScheme="blue" type="submit">
-              Add task
+              Save
             </Button>
-          </Stack>
+          </ButtonGroup>
         </ModalFooter>
       </ModalContent>
     </Modal>
   );
 }
-
-export default AddTaskModal;
