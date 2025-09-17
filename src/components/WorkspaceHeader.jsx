@@ -2,23 +2,25 @@ import {
   Box,
   Button,
   Flex,
-  FormControl,
-  FormLabel,
   Heading,
+  IconButton,
   Menu,
   MenuButton,
+  MenuDivider,
+  MenuGroup,
   MenuItem,
   MenuList,
   Switch,
   Text,
   Wrap,
-  WrapItem
+  WrapItem,
+  useColorMode
 } from "@chakra-ui/react";
-import { ChevronDownIcon } from "@chakra-ui/icons";
+import { AttachmentIcon, ChevronDownIcon, SettingsIcon } from "@chakra-ui/icons";
+import { useSystemColorModeSync } from "./ColorModeToggle.jsx";
 import SaveStatusIndicator from "./SaveStatusIndicator.jsx";
 import { HEADER_LAYOUT } from "../layout.js";
 import { WORKSPACE_HEADER_ACTION_SPACING, WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
-import ColorModeToggle from "./ColorModeToggle.jsx";
 import { colors } from "../theme/tokens.js";
 
 export default function WorkspaceHeader({
@@ -29,9 +31,26 @@ export default function WorkspaceHeader({
   onSave,
   isLocalStorageEnabled = false,
   onToggleLocalStorage,
+  activeFileName = "",
   title = "FocusBadger",
   subtitle = "Focus on what matters"
 }) {
+  const { colorMode, toggleColorMode } = useColorMode();
+  useSystemColorModeSync();
+
+  const handleLocalStorageToggle = (event) => {
+    event?.stopPropagation?.();
+    const nextValue = event?.target?.checked;
+    if (typeof nextValue === "boolean") {
+      onToggleLocalStorage?.(nextValue);
+    }
+  };
+
+  const handleColorModeToggle = (event) => {
+    event?.stopPropagation?.();
+    toggleColorMode();
+  };
+
   return (
     <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
       <Box>
@@ -48,32 +67,11 @@ export default function WorkspaceHeader({
           <WrapItem>
             <SaveStatusIndicator state={saveState} onSave={onSave} />
           </WrapItem>
-          <WrapItem>
-            <ColorModeToggle />
-          </WrapItem>
-          <WrapItem>
-            <FormControl display="flex" alignItems="center" width="auto">
-              <FormLabel htmlFor="workspace-local-storage" mb="0" fontSize="sm" fontWeight="medium">
-                Use local storage
-              </FormLabel>
-              <Switch
-                id="workspace-local-storage"
-                colorScheme="purple"
-                isChecked={isLocalStorageEnabled}
-                onChange={(event) => onToggleLocalStorage?.(event.target.checked)}
-              />
-            </FormControl>
-          </WrapItem>
         </Wrap>
         <Wrap spacing={WORKSPACE_HEADER_ACTION_SPACING} justify="flex-end">
           <WrapItem>
             <Button colorScheme="purple" onClick={onAddTask} {...HEADER_LAYOUT.button}>
-              Add task
-            </Button>
-          </WrapItem>
-          <WrapItem>
-            <Button variant="outline" onClick={onOpenFile} {...HEADER_LAYOUT.button}>
-              Open file
+              Add idea
             </Button>
           </WrapItem>
           <WrapItem>
@@ -92,6 +90,67 @@ export default function WorkspaceHeader({
               <MenuList>
                 <MenuItem onClick={() => onAssistantTab(0)}>Copy snapshot</MenuItem>
                 <MenuItem onClick={() => onAssistantTab(1)}>Apply assistant output</MenuItem>
+              </MenuList>
+            </Menu>
+          </WrapItem>
+          <WrapItem>
+            <Menu placement="bottom-end">
+              <MenuButton
+                as={IconButton}
+                variant="ghost"
+                icon={<SettingsIcon />}
+                aria-label="Workspace settings"
+              />
+              <MenuList minW="260px">
+                <MenuGroup title="Workspace settings">
+                  <MenuItem closeOnSelect={false}>
+                    <Flex align="center" justify="space-between" w="full" gap={4}>
+                      <Text fontSize="sm" fontWeight="medium">
+                        Use local storage
+                      </Text>
+                      <Switch
+                        id="workspace-local-storage"
+                        colorScheme="purple"
+                        isChecked={isLocalStorageEnabled}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={handleLocalStorageToggle}
+                      />
+                    </Flex>
+                  </MenuItem>
+                  <MenuItem closeOnSelect={false}>
+                    <Flex align="center" justify="space-between" w="full" gap={4}>
+                      <Text fontSize="sm" fontWeight="medium">
+                        Dark mode
+                      </Text>
+                      <Switch
+                        id="workspace-color-mode"
+                        colorScheme="purple"
+                        isChecked={colorMode === "dark"}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={handleColorModeToggle}
+                      />
+                    </Flex>
+                  </MenuItem>
+                </MenuGroup>
+                <MenuDivider />
+                <MenuItem
+                  icon={<AttachmentIcon />}
+                  isDisabled={isLocalStorageEnabled}
+                  onClick={() => {
+                    if (!isLocalStorageEnabled) {
+                      onOpenFile?.();
+                    }
+                  }}
+                >
+                  <Flex align="center" justify="space-between" w="full" gap={3}>
+                    <Text>Open file</Text>
+                    {!isLocalStorageEnabled ? (
+                      <Text fontSize="sm" color={colors.textSubtle} noOfLines={1} maxW="140px">
+                        {activeFileName || "No file selected"}
+                      </Text>
+                    ) : null}
+                  </Flex>
+                </MenuItem>
               </MenuList>
             </Menu>
           </WrapItem>

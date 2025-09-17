@@ -66,11 +66,14 @@ export default function MatrixQuadrant({
       borderWidth="1px"
       borderRadius="2xl"
       bgGradient={isPriorityHighlight ? highlightedGradient : isHover ? hoverGradient : baseGradient}
-      p={5}
+      px={5}
+      pt={5}
+      pb={4}
       boxShadow={isPriorityHighlight || isHover ? "lg" : "md"}
       display="flex"
       flexDirection="column"
-      gap={3.5}
+      gap={3}
+      h="100%"
       borderColor={isPriorityHighlight ? colors.borderPriority : isHover ? hoverBorderColor : colors.borderSubtle}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

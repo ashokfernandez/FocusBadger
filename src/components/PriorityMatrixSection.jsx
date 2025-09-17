@@ -57,7 +57,13 @@ export default function PriorityMatrixSection({
 
   return (
     <Box>
-      <SimpleGrid columns={MATRIX_GRID_COLUMNS} spacing={6}>
+      <SimpleGrid
+        columns={MATRIX_GRID_COLUMNS}
+        spacing={6}
+        minH={{ base: "auto", lg: "70vh" }}
+        alignItems="stretch"
+        autoRows="1fr"
+      >
         <MatrixQuadrant
           title="Why aren't you doing this now?"
           subtitle="Urgent and important"
