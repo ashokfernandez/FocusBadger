@@ -1,4 +1,5 @@
 import { Alert, AlertIcon, Box, Button, CloseButton, Text } from "@chakra-ui/react";
+import { colors } from "../theme/tokens.js";
 
 export default function DemoDataBanner({ isVisible, onLoadDemo, onDismiss }) {
   if (!isVisible) {
@@ -10,7 +11,7 @@ export default function DemoDataBanner({ isVisible, onLoadDemo, onDismiss }) {
       <AlertIcon />
       <Box flex="1">
         <Text fontWeight="medium">Exploring FocusBadger online?</Text>
-        <Text fontSize="sm" color="gray.700">
+        <Text fontSize="sm" color={colors.textMuted}>
           Load demo data to try the workspace without linking a local file. You can dismiss this banner after loading.
         </Text>
       </Box>
