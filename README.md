@@ -57,6 +57,8 @@ src/
   model.js             score(task), bucket(task, now)
   jsonl.js             parseJSONL(text), toJSONL(array)
   projects.js          helpers for project lists and snapshots
+  matrix.js            constants and filters for matrix view
+  projects.js          helpers for project lists and snapshots
 
 public/
   tasks.sample.jsonl   Example tasks served verbatim
@@ -64,6 +66,8 @@ public/
 test/
   model.test.js        Unit tests for scoring and bucketing
   jsonl.test.js        Unit tests for JSONL helpers
+  matrix.test.js       Matrix filtering logic
+  projects.test.js     Project helper mutations
 
 .github/workflows/
   ci.yml               CI that runs Vitest
@@ -147,6 +151,7 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 - [x] Drag and drop between columns (native HTML5) <!-- TASK:ui-dnd --> (commit fc28ebd)
   - [x] Dropping into Done sets `done=true` and updates `updated` <!-- TASK:ui-dnd-done --> (commit fc28ebd)
   - [x] Leaving Done sets `done=false` and updates `updated` <!-- TASK:ui-dnd-undo --> (commit fc28ebd)
+- [x] Matrix filters by project <!-- TASK:ui-matrix-filters --> (commit 51d199b)
 
 - [ ] Toolbar filters and sorting <!-- TASK:ui-filters -->
   - [ ] Project filter built from data plus All <!-- TASK:ui-filter-project -->
