@@ -21,6 +21,7 @@ import { useSystemColorModeSync } from "./ColorModeToggle.jsx";
 import SaveStatusIndicator from "./SaveStatusIndicator.jsx";
 import { HEADER_LAYOUT } from "../layout.js";
 import { WORKSPACE_HEADER_ACTION_SPACING, WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
+import { colors } from "../theme/tokens.js";
 
 export default function WorkspaceHeader({
   onAddTask,
@@ -54,7 +55,7 @@ export default function WorkspaceHeader({
     <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
       <Box>
         <Heading size="lg">{title}</Heading>
-        <Text color="gray.500">{subtitle}</Text>
+        <Text color={colors.textMuted}>{subtitle}</Text>
       </Box>
       <Flex
         {...HEADER_LAYOUT.container}
@@ -84,7 +85,7 @@ export default function WorkspaceHeader({
                 _active={{ bgGradient: WORKSPACE_HEADER_MENU_STYLES.active }}
                 rightIcon={<ChevronDownIcon />}
               >
-                Assistant IO
+                Assistant I/O
               </MenuButton>
               <MenuList>
                 <MenuItem onClick={() => onAssistantTab(0)}>Copy snapshot</MenuItem>
@@ -144,7 +145,7 @@ export default function WorkspaceHeader({
                   <Flex align="center" justify="space-between" w="full" gap={3}>
                     <Text>Open file</Text>
                     {!isLocalStorageEnabled ? (
-                      <Text fontSize="sm" color="gray.500" noOfLines={1} maxW="140px">
+                      <Text fontSize="sm" color={colors.textSubtle} noOfLines={1} maxW="140px">
                         {activeFileName || "No file selected"}
                       </Text>
                     ) : null}

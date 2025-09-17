@@ -1,6 +1,7 @@
 import { Box, Button, HStack, Heading, SimpleGrid, Stack, Text } from "@chakra-ui/react";
 import MatrixQuadrant from "./MatrixQuadrant.jsx";
 import { MATRIX_GRID_COLUMNS } from "../layout.js";
+import { colors } from "../theme/tokens.js";
 
 export default function PriorityMatrixSection({
   matrix,
@@ -26,15 +27,15 @@ export default function PriorityMatrixSection({
         borderWidth="1px"
         borderRadius="2xl"
         borderStyle="dashed"
-        borderColor="gray.200"
+        borderColor={colors.borderSubtle}
         py={{ base: 10, md: 16 }}
         px={{ base: 6, md: 12 }}
         textAlign="center"
-        bg="white"
+        bg={colors.surfaceBase}
       >
         <Stack spacing={4} align="center">
           <Heading size="md">Plan your first move</Heading>
-          <Text maxW="lg" color="gray.500">
+          <Text maxW="lg" color={colors.matrixEmptyText}>
             Start by adding a task or load our sample workspace to see how priorities snap into place.
           </Text>
           <HStack spacing={3} flexWrap="wrap" justify="center">

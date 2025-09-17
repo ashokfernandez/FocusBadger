@@ -2,6 +2,7 @@ import { Box, Button, Flex, Stack, Text } from "@chakra-ui/react";
 import { EditIcon } from "@chakra-ui/icons";
 import ProjectSection from "./ProjectSection.jsx";
 import { PROJECT_PANEL_STACK_SPACING } from "./componentTokens.js";
+import { colors } from "../theme/tokens.js";
 
 export default function ProjectsPanel({
   projectGroups,
@@ -53,17 +54,17 @@ export default function ProjectsPanel({
           borderWidth="1px"
           borderRadius="2xl"
           borderStyle="dashed"
-          borderColor="gray.200"
+          borderColor={colors.borderSubtle}
           py={{ base: 10, md: 14 }}
           px={{ base: 6, md: 10 }}
           textAlign="center"
-          bg="white"
+          bg={colors.surfaceBase}
         >
           <Stack spacing={4} align="center">
             <Text fontSize="lg" fontWeight="semibold">
               No projects yet
             </Text>
-            <Text maxW="md" color="gray.500">
+            <Text maxW="md" color={colors.projectsEmptyText}>
               Add a task to start organising by project. We'll group everything automatically once tasks arrive.
             </Text>
             {onAddTask ? (

@@ -23,6 +23,7 @@ import {
 import EffortSlider from "../EffortSlider.jsx";
 import { sanitizeNumber } from "../utils/taskFields.js";
 import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
+import { colors } from "../theme/tokens.js";
 
 export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreateProject }) {
   const [form, setForm] = useState({
@@ -158,7 +159,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
                 <FormLabel>Project</FormLabel>
                 <Select
                   variant="filled"
-                  focusBorderColor="blue.400"
+                  focusBorderColor={colors.interactiveFocus}
                   size="md"
                   value={
                     form.projectMode === "new" ? "__new__" : form.project || ""
@@ -177,7 +178,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
                   <Input
                     mt={2}
                     variant="filled"
-                    focusBorderColor="blue.400"
+                    focusBorderColor={colors.interactiveFocus}
                     placeholder="New project name"
                     value={form.newProjectName}
                     onChange={(event) => handleNewProjectNameChange(event.target.value)}
@@ -188,14 +189,14 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               <FormControl>
                 <FormLabel>Due date</FormLabel>
                 <InputGroup>
-                  <InputLeftElement pointerEvents="none" color="gray.400" aria-hidden="true">
+                  <InputLeftElement pointerEvents="none" color={colors.textSubtle} aria-hidden="true">
                     📅
                   </InputLeftElement>
                   <Input
                     pl={10}
                     type="date"
                     variant="filled"
-                    focusBorderColor="blue.400"
+                    focusBorderColor={colors.interactiveFocus}
                     value={form.due}
                     onChange={(event) => handleChange("due", event.target.value)}
                   />
@@ -238,7 +239,7 @@ export function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreat
               <FormLabel>Notes</FormLabel>
               <Textarea
                 variant="filled"
-                focusBorderColor="blue.400"
+                focusBorderColor={colors.interactiveFocus}
                 value={form.notes}
                 onChange={(event) => handleChange("notes", event.target.value)}
                 rows={3}

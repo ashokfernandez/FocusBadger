@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { Badge, Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
+import { Badge, Box, Flex, Heading, Stack, Text, useColorMode } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
 import { MATRIX_SORTS } from "../matrix.js";
+import { colors } from "../theme/tokens.js";
+
+const toCssVar = (token) => `var(--chakra-colors-${token.replace(/\./g, "-")})`;
 
 export default function MatrixQuadrant({
   title,
@@ -19,10 +22,16 @@ export default function MatrixQuadrant({
   highlightedTaskIndexes
 }) {
   const [isHover, setHover] = useState(false);
-  const baseGradient = `linear(to-br, ${colorScheme}.50, white)`;
-  const hoverGradient = `linear(to-br, ${colorScheme}.100, white)`;
+  const { colorMode } = useColorMode();
+  const gradientTarget = toCssVar(colors.surfaceBase);
+  const baseStop = `${colorScheme}.${colorMode === "dark" ? "900" : "50"}`;
+  const hoverStop = `${colorScheme}.${colorMode === "dark" ? "800" : "100"}`;
+  const highlightStop = `${colorScheme}.${colorMode === "dark" ? "700" : "100"}`;
+  const baseGradient = `linear(to-br, ${toCssVar(baseStop)}, ${gradientTarget})`;
+  const hoverGradient = `linear(to-br, ${toCssVar(hoverStop)}, ${gradientTarget})`;
   const isPriorityHighlight = highlightMode === MATRIX_SORTS.SCORE && quadrantKey === "today";
-  const highlightedGradient = `linear(to-br, ${colorScheme}.100, white)`;
+  const highlightedGradient = `linear(to-br, ${toCssVar(highlightStop)}, ${gradientTarget})`;
+  const hoverBorderColor = toCssVar(`${colorScheme}.${colorMode === "dark" ? "400" : "300"}`);
 
   const handleDragOver = useCallback(
     (event) => {
@@ -65,7 +74,7 @@ export default function MatrixQuadrant({
       flexDirection="column"
       gap={3}
       h="100%"
-      borderColor={isPriorityHighlight ? `${colorScheme}.400` : isHover ? `${colorScheme}.300` : "gray.100"}
+      borderColor={isPriorityHighlight ? colors.borderPriority : isHover ? hoverBorderColor : colors.borderSubtle}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -74,7 +83,7 @@ export default function MatrixQuadrant({
         <Box>
           <Heading size="sm">{title}</Heading>
           {subtitle ? (
-            <Text fontSize="sm" color="gray.500">
+            <Text fontSize="sm" color={colors.textMuted}>
               {subtitle}
             </Text>
           ) : null}
@@ -107,8 +116,8 @@ export default function MatrixQuadrant({
           borderRadius="lg"
           borderWidth="1px"
           borderStyle="dashed"
-          borderColor="gray.200"
-          color="gray.400"
+          borderColor={colors.matrixEmptyBorder}
+          color={colors.matrixEmptyText}
           fontSize="sm"
         >
           {emptyMessage ?? "Nothing here right now."}

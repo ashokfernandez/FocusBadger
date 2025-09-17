@@ -20,6 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { DeleteIcon } from "@chakra-ui/icons";
 import { WORKSPACE_HEADER_MENU_STYLES } from "./componentTokens.js";
+import { colors } from "../theme/tokens.js";
 
 export function ProjectListItem({ name, count, onRename, onDelete }) {
   const [value, setValue] = useState(name);
@@ -59,11 +60,11 @@ export function ProjectListItem({ name, count, onRename, onDelete }) {
           px={4}
           variant="outline"
           colorScheme="purple"
-          borderColor="purple.500"
+          borderColor={colors.borderPriority}
           onClick={handleRename}
           isDisabled={value.trim() === name.trim()}
-          _hover={{ bg: "purple.50" }}
-          _active={{ bg: "purple.100" }}
+          _hover={{ bg: colors.surfacePriority }}
+          _active={{ bg: colors.surfaceDropzone }}
         >
           Rename
         </Button>
@@ -78,11 +79,11 @@ export function ProjectListItem({ name, count, onRename, onDelete }) {
           />
         </Tooltip>
       </HStack>
-      <Text fontSize="xs" color="gray.500">
+      <Text fontSize="xs" color={colors.textSubtle}>
         {count ? `${count.toLocaleString()} task${count === 1 ? "" : "s"}` : "No tasks yet"}
       </Text>
       {error ? (
-        <Text fontSize="xs" color="red.500">
+        <Text fontSize="xs" color={colors.textError}>
           {error}
         </Text>
       ) : null}
@@ -196,7 +197,7 @@ export default function ProjectManagerModal({
                   />
                 ))
               ) : (
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="sm" color={colors.textMuted}>
                   No projects yet.
                 </Text>
               )}
