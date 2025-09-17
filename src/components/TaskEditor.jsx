@@ -38,8 +38,10 @@ export default function TaskEditor({
     title: task?.title ?? "",
     project: task?.project ?? "",
     due: task?.due ?? "",
-    importance: (task?.importance ?? 0) >= 3,
-    urgency: (task?.urgency ?? 0) >= 3,
+    importanceValue: task?.importance ?? undefined,
+    urgencyValue: task?.urgency ?? undefined,
+    importanceDirty: false,
+    urgencyDirty: false,
     effort: task?.effort ?? undefined,
     notes: task?.notes ?? "",
     done: Boolean(task?.done),
@@ -55,8 +57,10 @@ export default function TaskEditor({
       title: task?.title ?? "",
       project: task?.project ?? "",
       due: task?.due ?? "",
-      importance: (task?.importance ?? 0) >= 3,
-      urgency: (task?.urgency ?? 0) >= 3,
+      importanceValue: task?.importance ?? undefined,
+      urgencyValue: task?.urgency ?? undefined,
+      importanceDirty: false,
+      urgencyDirty: false,
       effort: task?.effort ?? undefined,
       notes: task?.notes ?? "",
       done: Boolean(task?.done),
@@ -101,6 +105,30 @@ export default function TaskEditor({
     setForm((prev) => ({ ...prev, effort: value }));
   }, []);
 
+  const handleImportanceToggle = useCallback((isChecked) => {
+    setForm((prev) => ({
+      ...prev,
+      importanceValue: isChecked
+        ? prev.importanceValue && prev.importanceValue >= 3
+          ? prev.importanceValue
+          : 5
+        : undefined,
+      importanceDirty: true
+    }));
+  }, []);
+
+  const handleUrgencyToggle = useCallback((isChecked) => {
+    setForm((prev) => ({
+      ...prev,
+      urgencyValue: isChecked
+        ? prev.urgencyValue && prev.urgencyValue >= 3
+          ? prev.urgencyValue
+          : 5
+        : undefined,
+      urgencyDirty: true
+    }));
+  }, []);
+
   const handleSubmit = useCallback(
     (event) => {
       event.preventDefault();
@@ -126,8 +154,10 @@ export default function TaskEditor({
         title,
         project: projectValue,
         due: form.due.trim() || undefined,
-        importance: form.importance ? 5 : undefined,
-        urgency: form.urgency ? 5 : undefined,
+        importance: form.importanceDirty
+          ? form.importanceValue ?? undefined
+          : task?.importance,
+        urgency: form.urgencyDirty ? form.urgencyValue ?? undefined : task?.urgency,
         effort: sanitizeNumber(form.effort),
         notes: form.notes.trim() || undefined,
         done: form.done
@@ -213,8 +243,8 @@ export default function TaskEditor({
               <FormControl display="flex" alignItems="center">
                 <Switch
                   id="edit-importance-toggle"
-                  isChecked={form.importance}
-                  onChange={(event) => handleChange("importance", event.target.checked)}
+                  isChecked={(form.importanceValue ?? 0) >= 3}
+                  onChange={(event) => handleImportanceToggle(event.target.checked)}
                   colorScheme="purple"
                   mr={3}
                 />
@@ -225,8 +255,8 @@ export default function TaskEditor({
               <FormControl display="flex" alignItems="center">
                 <Switch
                   id="edit-urgency-toggle"
-                  isChecked={form.urgency}
-                  onChange={(event) => handleChange("urgency", event.target.checked)}
+                  isChecked={(form.urgencyValue ?? 0) >= 3}
+                  onChange={(event) => handleUrgencyToggle(event.target.checked)}
                   colorScheme="orange"
                   mr={3}
                 />
