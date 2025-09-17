@@ -15,6 +15,7 @@ import {
   NumberInput,
   NumberInputField,
   SimpleGrid,
+  Select,
   Stack,
   Textarea
 } from "@chakra-ui/react";
