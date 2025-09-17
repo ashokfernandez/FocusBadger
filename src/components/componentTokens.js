@@ -1,5 +1,6 @@
 import { MATRIX_SORTS } from "../matrix.js";
 import { TOOLBAR_SORTS } from "../toolbar.js";
+import { colors } from "../theme/tokens.js";
 
 export const MATRIX_FILTER_CHIP_SPACING = { base: 2, md: 3 };
 
@@ -35,4 +36,4 @@ export const ASSISTANT_WORKFLOW_TAB_CONFIG = [
   { value: 1, label: "Apply assistant output" }
 ];
 
-export const ASSISTANT_WORKFLOW_TEXT_COLOR = "gray.600";
+export const ASSISTANT_WORKFLOW_TEXT_COLOR = colors.assistantText;
