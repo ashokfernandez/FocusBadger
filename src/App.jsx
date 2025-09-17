@@ -23,13 +23,14 @@ import {
   NumberInput,
   NumberInputField,
   SimpleGrid,
+  Spinner,
   Stack,
   Tag,
   Text,
   Textarea,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import { parseJSONL, toJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
@@ -51,6 +52,67 @@ function parseTags(value) {
 }
 
 const MotionCircle = motion(Box);
+const MotionBadge = motion(Badge);
+
+function SaveStatusIndicator({ state }) {
+  if (state.status === "saving") {
+    return (
+      <HStack spacing={2} color="blue.500" fontSize="sm">
+        <Spinner size="sm" />
+        <Text>Saving…</Text>
+      </HStack>
+    );
+  }
+
+  if (state.status === "saved") {
+    return (
+      <MotionBadge
+        colorScheme="green"
+        variant="subtle"
+        fontSize="xs"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.25 }}
+        display="inline-flex"
+        alignItems="center"
+        gap={1}
+      >
+        <CheckCircleIcon /> Saved
+      </MotionBadge>
+    );
+  }
+
+  if (state.status === "dirty") {
+    return (
+      <Badge colorScheme="orange" variant="subtle" fontSize="xs">
+        Unsaved changes
+      </Badge>
+    );
+  }
+
+  if (state.status === "unsynced") {
+    return (
+      <Badge colorScheme="purple" variant="subtle" fontSize="xs">
+        Changes not linked to a file
+      </Badge>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <HStack spacing={2} color="red.500" fontSize="sm">
+        <WarningTwoIcon />
+        <Text>Save failed</Text>
+      </HStack>
+    );
+  }
+
+  return (
+    <Badge colorScheme="gray" variant="subtle" fontSize="xs">
+      Ready
+    </Badge>
+  );
+}
 
 function TaskCard({ item, onEdit, onToggleDone, draggable = false }) {
   const { task, index } = item;
@@ -441,6 +503,36 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
+  const lastSavedRef = useRef("");
+  const saveTimeoutRef = useRef(null);
+  const [saveState, setSaveState] = useState({ status: "idle" });
+
+  const clearPendingSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+  }, []);
+
+  const writeToHandle = useCallback(async (handle, text) => {
+    const writable = await handle.createWritable();
+    await writable.write(text);
+    await writable.close();
+  }, []);
+
+  const ensureHandleForSave = useCallback(async () => {
+    if (fileHandleRef.current) return fileHandleRef.current;
+    if (!window.showSaveFilePicker) {
+      alert("Use a Chromium browser for File System Access support");
+      return null;
+    }
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "tasks.jsonl",
+      types: [{ description: "JSONL", accept: { "text/plain": [".jsonl"] } }]
+    });
+    fileHandleRef.current = handle;
+    return handle;
+  }, []);
 
   const matrix = useMemo(() => {
     const now = new Date();
@@ -517,6 +609,51 @@ export default function App() {
       .sort(([a], [b]) => sortByName(a, b))
       .map(([name, items]) => ({ name, items: sortTasks(items) }));
   }, [tasks]);
+
+  useEffect(() => {
+    const snapshot = toJSONL(tasks);
+    const handle = fileHandleRef.current;
+
+    if (!handle) {
+      clearPendingSave();
+      if (tasks.length) {
+        setSaveState({ status: "unsynced" });
+      } else {
+        setSaveState({ status: "idle" });
+      }
+      return () => {};
+    }
+
+    if (snapshot === lastSavedRef.current) {
+      clearPendingSave();
+      setSaveState({ status: "saved" });
+      return () => {};
+    }
+
+    clearPendingSave();
+    setSaveState({ status: "dirty" });
+    const timeout = setTimeout(async () => {
+      setSaveState({ status: "saving" });
+      try {
+        await writeToHandle(handle, snapshot);
+        lastSavedRef.current = snapshot;
+        setSaveState({ status: "saved", timestamp: Date.now() });
+      } catch (error) {
+        console.error(error);
+        setSaveState({ status: "error", error });
+      } finally {
+        saveTimeoutRef.current = null;
+      }
+    }, 600);
+    saveTimeoutRef.current = timeout;
+
+    return () => {
+      clearTimeout(timeout);
+      if (saveTimeoutRef.current === timeout) {
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [tasks, writeToHandle, clearPendingSave]);
 
   const updateTask = useCallback((index, mutator) => {
     setTasks((prev) => {
@@ -607,8 +744,11 @@ export default function App() {
   const handleLoadSample = useCallback(async () => {
     const res = await fetch("/tasks.sample.jsonl");
     const text = await res.text();
-    setTasks(parseJSONL(text));
+    const parsed = parseJSONL(text);
     fileHandleRef.current = null;
+    lastSavedRef.current = toJSONL(parsed);
+    setTasks(parsed);
+    setSaveState({ status: parsed.length ? "unsynced" : "idle" });
   }, []);
 
   const handleOpenFile = useCallback(async () => {
@@ -622,21 +762,32 @@ export default function App() {
     fileHandleRef.current = handle;
     const file = await handle.getFile();
     const text = await file.text();
-    setTasks(parseJSONL(text));
+    const parsed = parseJSONL(text);
+    lastSavedRef.current = toJSONL(parsed);
+    setTasks(parsed);
+    setSaveState({ status: "saved", timestamp: Date.now() });
   }, []);
 
   const handleSaveFile = useCallback(async () => {
-    if (!fileHandleRef.current) {
-      alert("Open a tasks file first");
-      return;
+    const handle = await ensureHandleForSave();
+    if (!handle) return;
+    clearPendingSave();
+    const snapshot = toJSONL(tasks);
+    setSaveState({ status: "saving" });
+    try {
+      await writeToHandle(handle, snapshot);
+      saveTimeoutRef.current = null;
+      lastSavedRef.current = snapshot;
+      setSaveState({ status: "saved", timestamp: Date.now() });
+    } catch (error) {
+      console.error(error);
+      setSaveState({ status: "error", error });
     }
-    const writable = await fileHandleRef.current.createWritable();
-    await writable.write(toJSONL(tasks));
-    await writable.close();
-    alert("Saved");
-  }, [tasks]);
+  }, [tasks, ensureHandleForSave, clearPendingSave, writeToHandle]);
 
   const editingTask = editingIndex != null ? tasks[editingIndex] : null;
+
+  useEffect(() => () => clearPendingSave(), [clearPendingSave]);
 
   return (
     <Container maxW="7xl" py={10}>
@@ -648,15 +799,18 @@ export default function App() {
               Focus on what matters, then see everything in context.
             </Text>
           </Box>
-          <ButtonGroup ml={{ md: "auto" }} spacing={3}>
-            <Button variant="ghost" onClick={handleLoadSample}>
-              Load sample
-            </Button>
-            <Button onClick={handleOpenFile}>Open tasks.jsonl</Button>
-            <Button colorScheme="blue" onClick={handleSaveFile}>
-              Save
-            </Button>
-          </ButtonGroup>
+          <Flex ml={{ md: "auto" }} align="center" gap={4}>
+            <SaveStatusIndicator state={saveState} />
+            <ButtonGroup spacing={3}>
+              <Button variant="ghost" onClick={handleLoadSample}>
+                Load sample
+              </Button>
+              <Button onClick={handleOpenFile}>Open tasks.jsonl</Button>
+              <Button colorScheme="blue" onClick={handleSaveFile}>
+                Save
+              </Button>
+            </ButtonGroup>
+          </Flex>
         </Flex>
 
         <Stack spacing={6}>
