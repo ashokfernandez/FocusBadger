@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "./test-utils.js";
 import { parseJSONL, toJSONL } from "../src/jsonl.js";
 
 describe("parseJSONL", () => {
