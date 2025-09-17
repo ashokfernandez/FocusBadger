@@ -1,5 +1,8 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+
+const react = await import("@vitejs/plugin-react")
+  .then((mod) => mod.default)
+  .catch(() => () => ({ name: "noop-react-plugin" }));
 
 export default defineConfig({
   base: "./",
