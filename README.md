@@ -59,6 +59,7 @@ src/
   projects.js          helpers for project lists and snapshots
   matrix.js            constants and filters for matrix view
   jsonEditor.js        export helpers and validation for JSON editing
+  taskFactory.js       helpers for creating new task payloads
 
 public/
   tasks.json           Hosted demo snapshot for GitHub Pages
@@ -69,6 +70,7 @@ test/
   jsonl.test.js        Unit tests for JSONL helpers
   matrix.test.js       Matrix filtering logic
   jsonEditor.test.js   JSON import/export validation
+  taskFactory.test.js  Task creation helper tests
   projects.test.js     Project helper mutations
 
 .github/workflows/
