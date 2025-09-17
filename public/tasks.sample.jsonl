@@ -1,4 +1,4 @@
-# TaskBadger sample tasks
+# FocusBadger sample tasks
 {"type":"project","name":"Work"}
 {"type":"project","name":"Home"}
 {"title":"Write weekly report","project":"Work","importance":3,"urgency":2,"effort":2,"due":"2025-09-19","done":false}

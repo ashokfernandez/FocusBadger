@@ -1,4 +1,4 @@
-# TaskBadger
+# FocusBadger
 
 Local first task board that stores everything in a human friendly JSONL file. Fast to edit, easy to diff, simple to automate with LLMs. Runs as a static site with a hot reload dev server and has unit tests.
 
@@ -155,7 +155,7 @@ Pull requests
 
 - `.github/workflows/deploy.yml` builds on pushes to `main` and publishes the site via GitHub Pages.
 - Enable Pages under **Settings → Pages → Build and deployment → GitHub Actions**.
-- The Vite config uses a relative `base`, so the published site works at `https://<user>.github.io/TaskBadger/` while still running locally.
+- The Vite config uses a relative `base`, so the published site works at `https://<user>.github.io/FocusBadger/` while still running locally.
 - File System Access API continues to read/write your local `tasks.jsonl` when opened in a compatible browser.
 
 ---

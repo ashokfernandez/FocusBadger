@@ -9,7 +9,7 @@ export default function DemoDataBanner({ isVisible, onLoadDemo, onDismiss }) {
     <Alert status="info" variant="left-accent" borderRadius="xl" alignItems="center">
       <AlertIcon />
       <Box flex="1">
-        <Text fontWeight="medium">Exploring TaskBadger online?</Text>
+        <Text fontWeight="medium">Exploring FocusBadger online?</Text>
         <Text fontSize="sm" color="gray.700">
           Load demo data to try the workspace without linking a local file. You can dismiss this banner after loading.
         </Text>
