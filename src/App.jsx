@@ -1258,8 +1258,9 @@ export default function App() {
 
   useEffect(() => {
     if (!jsonModal.isOpen) return;
-    setJsonInputValue(jsonExportText);
+    if (jsonTabIndex !== 0) return;
     const initial = parseJSONInput(jsonExportText);
+    setJsonInputValue(jsonExportText);
     if (initial.ok) {
       setJsonParsed(initial);
       setJsonError("");
@@ -1267,7 +1268,7 @@ export default function App() {
       setJsonParsed(null);
       setJsonError(initial.error ?? "");
     }
-  }, [jsonModal.isOpen, jsonExportText]);
+  }, [jsonModal.isOpen, jsonExportText, jsonTabIndex]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1597,15 +1598,28 @@ export default function App() {
     []
   );
 
-  const openJsonExport = useCallback(() => {
-    setJsonTabIndex(0);
-    jsonModal.onOpen();
-  }, [jsonModal]);
-
-  const openJsonImport = useCallback(() => {
-    setJsonTabIndex(1);
-    jsonModal.onOpen();
-  }, [jsonModal]);
+  const openAssistantIo = useCallback(
+    (tab = 0) => {
+      setJsonTabIndex(tab);
+      if (tab === 0) {
+        const initial = parseJSONInput(jsonExportText);
+        setJsonInputValue(jsonExportText);
+        if (initial.ok) {
+          setJsonParsed(initial);
+          setJsonError("");
+        } else {
+          setJsonParsed(null);
+          setJsonError(initial.error ?? "");
+        }
+      } else {
+        setJsonInputValue("");
+        setJsonParsed(null);
+        setJsonError("");
+      }
+      jsonModal.onOpen();
+    },
+    [jsonExportText, jsonModal]
+  );
 
   const handleJsonTabChange = useCallback(
     (index) => {
@@ -1791,14 +1805,23 @@ export default function App() {
               </Button>
             </WrapItem>
             <WrapItem>
-              <Button variant="outline" onClick={openJsonExport} {...HEADER_LAYOUT.button}>
-                Copy JSON
-              </Button>
-            </WrapItem>
-            <WrapItem>
-              <Button variant="outline" onClick={openJsonImport} {...HEADER_LAYOUT.button}>
-                Apply JSON
-              </Button>
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={Button}
+                  {...HEADER_LAYOUT.button}
+                  bgGradient="linear(to-r, purple.500, pink.500)"
+                  color="white"
+                  _hover={{ bgGradient: "linear(to-r, purple.600, pink.600)" }}
+                  _active={{ bgGradient: "linear(to-r, purple.700, pink.700)" }}
+                  rightIcon={<ChevronDownIcon />}
+                >
+                  Assistant I/O
+                </MenuButton>
+                <MenuList>
+                  <MenuItem onClick={() => openAssistantIo(0)}>Copy snapshot</MenuItem>
+                  <MenuItem onClick={() => openAssistantIo(1)}>Apply assistant output</MenuItem>
+                </MenuList>
+              </Menu>
             </WrapItem>
           </Wrap>
         </Flex>
