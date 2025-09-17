@@ -161,9 +161,9 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
   - [x] Leaving Done sets `done=false` and updates `updated` <!-- TASK:ui-dnd-undo --> (commit fc28ebd)
 - [x] Matrix filters by project <!-- TASK:ui-matrix-filters --> (commit 51d199b)
 
-- [ ] Toolbar filters and sorting <!-- TASK:ui-filters -->
-  - [ ] Project filter built from data plus All <!-- TASK:ui-filter-project -->
-  - [ ] Sort selector: Score, Due date, Title <!-- TASK:ui-sort -->
+- [x] Toolbar filters and sorting <!-- TASK:ui-filters --> (PR #8)
+  - [x] Project filter built from data plus All <!-- TASK:ui-filter-project --> (PR #8)
+  - [x] Sort selector: Score, Due date, Title <!-- TASK:ui-sort --> (PR #8)
 
 - [ ] Add task modal <!-- TASK:ui-add -->
   - [ ] Validate title and optional fields <!-- TASK:ui-add-validate -->
