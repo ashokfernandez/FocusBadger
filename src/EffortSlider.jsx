@@ -1,29 +1,13 @@
 import { Badge, Box, HStack, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Text } from "@chakra-ui/react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-
-const MIN_EFFORT = 1;
-const MAX_EFFORT = 10;
-const DEFAULT_EFFORT = 5;
-
-function clampEffort(value) {
-  if (value == null || Number.isNaN(value)) return DEFAULT_EFFORT;
-  if (value < MIN_EFFORT) return MIN_EFFORT;
-  if (value > MAX_EFFORT) return MAX_EFFORT;
-  return Math.round(value);
-}
-
-function describeEffort(value) {
-  if (value == null) {
-    return { label: "Slide to set", colorScheme: "gray" };
-  }
-  if (value <= 3) {
-    return { label: "Light lift", colorScheme: "green" };
-  }
-  if (value <= 7) {
-    return { label: "In the zone", colorScheme: "yellow" };
-  }
-  return { label: "Deep focus", colorScheme: "red" };
-}
+import {
+  clampEffort,
+  DEFAULT_EFFORT,
+  describeEffort,
+  shouldCommitEffortChange,
+  MIN_EFFORT,
+  MAX_EFFORT
+} from "./effortMath.js";
 
 export function EffortSlider({
   value,
@@ -31,10 +15,11 @@ export function EffortSlider({
   size = "md",
   isCompact = false,
   defaultValue = DEFAULT_EFFORT,
+  showDescriptor = true,
   isAlwaysVisible = false
 }) {
-  const [internalValue, setInternalValue] = useState(() => clampEffort(value ?? defaultValue));
-  const committedValueRef = useRef(clampEffort(value ?? defaultValue));
+  const [internalValue, setInternalValue] = useState(() => clampEffort(value ?? defaultValue, defaultValue));
+  const committedValueRef = useRef(clampEffort(value ?? defaultValue, defaultValue));
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -42,21 +27,10 @@ export function EffortSlider({
   const sliderId = useId();
 
   useEffect(() => {
-    const clamped = clampEffort(value ?? defaultValue);
+    const clamped = clampEffort(value ?? defaultValue, defaultValue);
     setInternalValue(clamped);
     committedValueRef.current = clamped;
   }, [value, defaultValue]);
-
-  const commitValue = useCallback(
-    (next) => {
-      const clamped = clampEffort(next);
-      setInternalValue(clamped);
-      if (committedValueRef.current === clamped) return;
-      committedValueRef.current = clamped;
-      onChange?.(clamped);
-    },
-    [onChange]
-  );
 
   const descriptor = useMemo(
     () => describeEffort(hasDefinedValue ? internalValue : null),
@@ -68,8 +42,28 @@ export function EffortSlider({
 
   const fontSize = size === "sm" ? "xs" : "sm";
   const isSliderVisible = isAlwaysVisible || isExpanded || isHovering || isFocused;
+  const compactMaxHeight = showDescriptor ? "112px" : "64px";
 
-  const handleToggleVisibility = () => {
+  const handleSliderChange = useCallback((next) => {
+    setInternalValue((prev) => clampEffort(next, prev));
+  }, []);
+
+  const handleSliderCommit = useCallback(
+    (next) => {
+      setInternalValue((prev) => {
+        const clamped = clampEffort(next, prev);
+        if (!shouldCommitEffortChange(committedValueRef.current, clamped)) {
+          return clamped;
+        }
+        committedValueRef.current = clamped;
+        onChange?.(clamped);
+        return clamped;
+      });
+    },
+    [onChange]
+  );
+
+  const handleToggleVisibility = useCallback(() => {
     if (isAlwaysVisible) return;
     setIsExpanded((prev) => {
       const next = !prev;
@@ -79,14 +73,17 @@ export function EffortSlider({
       }
       return next;
     });
-  };
+  }, [isAlwaysVisible]);
 
-  const handleBadgeKeyDown = (event) => {
-    if (event.key === " " || event.key === "Enter") {
-      event.preventDefault();
-      handleToggleVisibility();
-    }
-  };
+  const handleBadgeKeyDown = useCallback(
+    (event) => {
+      if (event.key === " " || event.key === "Enter") {
+        event.preventDefault();
+        handleToggleVisibility();
+      }
+    },
+    [handleToggleVisibility]
+  );
 
   const toggleProps = isAlwaysVisible
     ? { as: "span", cursor: "default" }
@@ -104,7 +101,7 @@ export function EffortSlider({
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => {
         setIsHovering(false);
-        if (!isExpanded) {
+        if (!isExpanded && !isAlwaysVisible) {
           setIsFocused(false);
         }
       }}
@@ -145,7 +142,7 @@ export function EffortSlider({
         transform={isSliderVisible ? "translateY(0)" : "translateY(-6px)"}
         pointerEvents={isSliderVisible ? "auto" : "none"}
         transition="opacity 0.2s ease, transform 0.2s ease, max-height 0.2s ease"
-        maxHeight={isSliderVisible ? (isCompact ? "64px" : "140px") : "0px"}
+        maxHeight={isSliderVisible ? (isCompact ? compactMaxHeight : "140px") : "0px"}
         overflow="hidden"
         aria-hidden={!isSliderVisible}
       >
@@ -154,8 +151,8 @@ export function EffortSlider({
           min={MIN_EFFORT}
           max={MAX_EFFORT}
           step={1}
-          onChange={commitValue}
-          onChangeEnd={commitValue}
+          onChange={handleSliderChange}
+          onChangeEnd={handleSliderCommit}
           aria-label="Effort"
           aria-valuetext={hasDefinedValue ? `${internalValue} – ${descriptor.label}` : "Set effort"}
           focusThumbOnChange={false}
@@ -184,11 +181,11 @@ export function EffortSlider({
             </Box>
           </SliderThumb>
         </Slider>
-        {isCompact ? null : (
-          <Text mt={2} fontSize="xs" color="gray.500">
+        {showDescriptor ? (
+          <Text mt={isCompact ? 1.5 : 2} fontSize="xs" color="gray.500">
             {descriptor.label}
           </Text>
-        )}
+        ) : null}
       </Box>
     </Box>
   );

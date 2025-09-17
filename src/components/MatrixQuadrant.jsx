@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Badge, Box, Flex, Heading, Stack, Text } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
+import { MATRIX_SORTS } from "../matrix.js";
 
 export default function MatrixQuadrant({
   title,
@@ -9,14 +10,18 @@ export default function MatrixQuadrant({
   items,
   emptyMessage,
   onEditTask,
+  onRenameTask,
   onToggleTask,
   onDropTask,
   quadrantKey,
-  onEffortChange
+  onEffortChange,
+  highlightMode
 }) {
   const [isHover, setHover] = useState(false);
   const baseGradient = `linear(to-br, ${colorScheme}.50, white)`;
   const hoverGradient = `linear(to-br, ${colorScheme}.100, white)`;
+  const isPriorityHighlight = highlightMode === MATRIX_SORTS.SCORE && quadrantKey === "today";
+  const highlightedGradient = `linear(to-br, ${colorScheme}.100, white)`;
 
   const handleDragOver = useCallback(
     (event) => {
@@ -50,13 +55,13 @@ export default function MatrixQuadrant({
     <Box
       borderWidth="1px"
       borderRadius="2xl"
-      bgGradient={isHover ? hoverGradient : baseGradient}
+      bgGradient={isPriorityHighlight ? highlightedGradient : isHover ? hoverGradient : baseGradient}
       p={5}
-      boxShadow={isHover ? "xl" : "md"}
+      boxShadow={isPriorityHighlight || isHover ? "lg" : "md"}
       display="flex"
       flexDirection="column"
       gap={3.5}
-      borderColor={isHover ? `${colorScheme}.300` : "gray.100"}
+      borderColor={isPriorityHighlight ? `${colorScheme}.400` : isHover ? `${colorScheme}.300` : "gray.100"}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -81,8 +86,10 @@ export default function MatrixQuadrant({
               key={item.index}
               item={item}
               onEdit={onEditTask}
+              onRenameTitle={onRenameTask}
               onToggleDone={onToggleTask}
               onEffortChange={onEffortChange}
+              highlightMode={highlightMode}
               draggable={Boolean(onDropTask)}
             />
           ))}

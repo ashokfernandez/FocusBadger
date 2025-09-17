@@ -69,6 +69,22 @@ describe("projects helpers", () => {
     ]);
   });
 
+  it("ignores rename when the name is unchanged after trimming", () => {
+    const projects = ["Alpha", "Work"];
+    const tasks = [{ id: "1", title: "Task", project: "Alpha" }];
+    const result = renameProject(projects, tasks, "Alpha", "  alpha  ");
+    expect(result.ok).toBe(true);
+    expect(result.projects).toBe(projects);
+    expect(result.tasks).toBe(tasks);
+    expect(result.name).toBe("Alpha");
+  });
+
+  it("rejects rename when the new name is empty", () => {
+    const result = renameProject(["Alpha"], [], "Alpha", "   ");
+    expect(result.ok).toBe(false);
+    expect(result.message).toBe("Project name is required");
+  });
+
   it("prevents rename collisions", () => {
     const result = renameProject(["Alpha", "Work"], [], "Alpha", "work");
     expect(result.ok).toBe(false);
