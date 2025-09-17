@@ -35,11 +35,17 @@ import {
 } from "@chakra-ui/react";
 import { CheckIcon, CheckCircleIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
-import { parseJSONL, toJSONL } from "./jsonl.js";
+import { parseJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
-
-const compareInsensitive = (a, b) =>
-  a.localeCompare(b, undefined, { sensitivity: "base" });
+import {
+  addProject as addProjectHelper,
+  buildSnapshot,
+  collectProjects,
+  deleteProject as deleteProjectHelper,
+  hydrateRecords,
+  renameProject as renameProjectHelper,
+  compareInsensitive
+} from "./projects.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -137,7 +143,7 @@ function TaskCard({ item, onEdit, onToggleDone, draggable = false }) {
 
   const handleDragEnd = useCallback(() => {
     setDragging(false);
-  }, [sortProjectNames, buildSnapshot]);
+  }, []);
 
   const handleToggle = useCallback(
     (event) => {
@@ -242,7 +248,7 @@ function MatrixQuadrant({
 
   const handleDragLeave = useCallback(() => {
     setHover(false);
-  }, [sortProjectNames, buildSnapshot]);
+  }, []);
 
   const handleDrop = useCallback(
     (event) => {
@@ -706,32 +712,18 @@ export default function App() {
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
   const [saveState, setSaveState] = useState({ status: "idle" });
-  const sortProjectNames = useCallback(
-    (list) => list.slice().sort((a, b) => compareInsensitive(a, b)),
-    []
-  );
-  const buildSnapshot = useCallback(
-    (tasksList, projectList) =>
-      toJSONL([
-        ...projectList.map((name) => ({ type: "project", name })),
-        ...tasksList
-      ]),
-    []
-  );
   useEffect(() => {
     setProjects((prev) => {
-      const set = new Set(prev);
-      let changed = false;
-      tasks.forEach((task) => {
-        const key = task.project?.trim();
-        if (key && !set.has(key)) {
-          set.add(key);
-          changed = true;
-        }
-      });
-      return changed ? sortProjectNames(Array.from(set)) : prev;
+      const derived = collectProjects(
+        tasks,
+        prev.map((name) => ({ type: "project", name }))
+      );
+      if (derived.length === prev.length && derived.every((name, idx) => name === prev[idx])) {
+        return prev;
+      }
+      return derived;
     });
-  }, [tasks, sortProjectNames]);
+  }, [tasks]);
 
   const clearPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -925,55 +917,42 @@ export default function App() {
 
   const addProject = useCallback(
     (name) => {
-      const trimmed = name.trim();
-      if (!trimmed) {
-        return { ok: false, message: "Project name is required" };
+      const result = addProjectHelper(projects, name);
+      if (result.ok) {
+        setProjects(result.projects);
       }
-      const exists = projects.some((existing) => existing.toLowerCase() === trimmed.toLowerCase());
-      if (exists) {
-        return { ok: false, message: "Project already exists" };
-      }
-      setProjects((prev) => sortProjectNames([...prev, trimmed]));
-      return { ok: true, name: trimmed };
+      return result;
     },
-    [projects, sortProjectNames]
+    [projects]
   );
 
   const renameProject = useCallback(
     (oldName, newName) => {
-      const trimmed = newName.trim();
-      if (!trimmed) {
-        return { ok: false, message: "Project name is required" };
+      const result = renameProjectHelper(projects, tasks, oldName, newName);
+      if (result.ok) {
+        setProjects(result.projects);
+        if (result.tasks !== tasks) {
+          setTasks(result.tasks);
+        }
       }
-      if (trimmed.toLowerCase() === oldName.toLowerCase()) {
-        return { ok: true, name: oldName };
-      }
-      const exists = projects.some((existing) => existing.toLowerCase() === trimmed.toLowerCase());
-      if (exists) {
-        return { ok: false, message: "Project already exists" };
-      }
-      setProjects((prev) => sortProjectNames(prev.map((name) => (name === oldName ? trimmed : name))));
-      const now = new Date().toISOString();
-      setTasks((prev) =>
-        prev.map((task) =>
-          task.project === oldName ? { ...task, project: trimmed, updated: now } : task
-        )
-      );
-      return { ok: true, name: trimmed };
+      return result;
     },
-    [projects, sortProjectNames]
+    [projects, tasks]
   );
 
-  const deleteProject = useCallback((name) => {
-    setProjects((prev) => prev.filter((projectName) => projectName !== name));
-    const now = new Date().toISOString();
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.project === name ? { ...task, project: undefined, updated: now } : task
-      )
-    );
-    return { ok: true };
-  }, []);
+  const deleteProject = useCallback(
+    (name) => {
+      const result = deleteProjectHelper(projects, tasks, name);
+      if (result.ok) {
+        setProjects(result.projects);
+        if (result.tasks !== tasks) {
+          setTasks(result.tasks);
+        }
+      }
+      return result;
+    },
+    [projects, tasks]
+  );
 
   const handleInlineProjectCreate = useCallback(
     (name) => addProject(name),
@@ -1048,15 +1027,7 @@ export default function App() {
     const res = await fetch("/tasks.sample.jsonl");
     const text = await res.text();
     const parsed = parseJSONL(text);
-    const taskRecords = parsed.filter((record) => !record.type || record.type === "task");
-    const projectRecords = parsed
-      .filter((record) => record.type === "project" && record.name)
-      .map((record) => record.name);
-    const derivedProjects = new Set(projectRecords);
-    taskRecords.forEach((task) => {
-      if (task.project) derivedProjects.add(task.project);
-    });
-    const projectList = sortProjectNames(Array.from(derivedProjects));
+    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
     fileHandleRef.current = null;
     lastSavedRef.current = buildSnapshot(taskRecords, projectList);
     setProjects(projectList);
@@ -1076,18 +1047,7 @@ export default function App() {
     const file = await handle.getFile();
     const text = await file.text();
     const parsed = parseJSONL(text);
-    const taskRecords = parsed.filter((record) => !record.type || record.type === "task");
-    const projectRecords = parsed
-      .filter((record) => record.type === "project" && record.name)
-      .map((record) => record.name);
-    const projectList = sortProjectNames(
-      Array.from(
-        new Set([
-          ...projectRecords,
-          ...taskRecords.filter((task) => task.project).map((task) => task.project)
-        ])
-      )
-    );
+    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
     lastSavedRef.current = buildSnapshot(taskRecords, projectList);
     setProjects(projectList);
     setTasks(taskRecords);

@@ -56,6 +56,7 @@ src/
   style.css            Global overrides (fonts/background)
   model.js             score(task), bucket(task, now)
   jsonl.js             parseJSONL(text), toJSONL(array)
+  projects.js          helpers for project lists and snapshots
 
 public/
   tasks.sample.jsonl   Example tasks served verbatim
