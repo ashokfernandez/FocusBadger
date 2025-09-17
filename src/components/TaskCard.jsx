@@ -23,6 +23,7 @@ export default function TaskCard({
   onToggleDone,
   onEffortChange,
   highlightMode,
+  highlightedTaskIndexes,
   draggable = false
 }) {
   const { task, index, priority: providedPriority } = item;
@@ -38,7 +39,11 @@ export default function TaskCard({
   const projectLabel = task.project?.trim();
   const hasProject = Boolean(projectLabel);
   const hasDueDate = Boolean(task.due);
-  const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, { priority });
+  const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, {
+    priority,
+    highlightedTaskIndexes,
+    taskIndex: index
+  });
   const highlightBorderColor = isPriorityHighlight
     ? "purple.400"
     : isLowEffortHighlight

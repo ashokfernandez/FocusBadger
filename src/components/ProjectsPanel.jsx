@@ -13,7 +13,8 @@ export default function ProjectsPanel({
   onToggleTask,
   onDropProject,
   onEffortChange,
-  highlightMode
+  highlightMode,
+  highlightedTaskIndexes
 }) {
   return (
     <Box>
@@ -43,6 +44,7 @@ export default function ProjectsPanel({
               onDropProject={onDropProject}
               onEffortChange={onEffortChange}
               highlightMode={highlightMode}
+              highlightedTaskIndexes={highlightedTaskIndexes}
             />
           ))}
         </Stack>

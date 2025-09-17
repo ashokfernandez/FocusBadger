@@ -13,7 +13,8 @@ export default function ProjectSection({
   onToggleTask,
   onDropProject,
   onEffortChange,
-  highlightMode
+  highlightMode,
+  highlightedTaskIndexes
 }) {
   const allowDrop = Boolean(onDropProject);
   const [isHover, setHover] = useState(false);
@@ -22,15 +23,22 @@ export default function ProjectSection({
   const [isEditing, setEditing] = useState(false);
   const canRename = useMemo(() => Boolean(projectKey && onRenameProject), [projectKey, onRenameProject]);
   const { hasPriorityHighlight, hasLowEffortHighlight } = useMemo(
-    () => getProjectMoodHighlight(items, highlightMode),
-    [items, highlightMode]
+    () =>
+      getProjectMoodHighlight(items, highlightMode, {
+        highlightedTaskIndexes
+      }),
+    [items, highlightMode, highlightedTaskIndexes]
   );
   const projectBorderColor = hasPriorityHighlight
-    ? "purple.400"
+    ? "red.400"
     : hasLowEffortHighlight
       ? "green.300"
       : "gray.100";
-  const projectBackground = hasLowEffortHighlight && !hasPriorityHighlight ? "green.50" : "white";
+  const projectBackground = hasPriorityHighlight
+    ? "red.50"
+    : hasLowEffortHighlight
+      ? "green.50"
+      : "white";
   const projectShadow = hasPriorityHighlight ? "xl" : hasLowEffortHighlight ? "lg" : "md";
 
   useEffect(() => {
@@ -186,6 +194,7 @@ export default function ProjectSection({
               onEffortChange={onEffortChange}
               draggable={allowDrop}
               highlightMode={highlightMode}
+              highlightedTaskIndexes={highlightedTaskIndexes}
             />
           ))}
         </SimpleGrid>

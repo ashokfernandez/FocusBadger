@@ -5,6 +5,7 @@ import { MATRIX_GRID_COLUMNS } from "../layout.js";
 export default function PriorityMatrixSection({
   matrix,
   sortMode,
+  highlightedTaskIndexes,
   onEditTask,
   onRenameTask,
   onToggleTask,
@@ -62,6 +63,7 @@ export default function PriorityMatrixSection({
           colorScheme="red"
           items={matrix.today}
           highlightMode={sortMode}
+          highlightedTaskIndexes={highlightedTaskIndexes}
           onEditTask={onEditTask}
           onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
@@ -75,6 +77,7 @@ export default function PriorityMatrixSection({
           colorScheme="purple"
           items={matrix.schedule}
           highlightMode={sortMode}
+          highlightedTaskIndexes={highlightedTaskIndexes}
           onEditTask={onEditTask}
           onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
@@ -89,6 +92,7 @@ export default function PriorityMatrixSection({
           colorScheme="orange"
           items={matrix.delegate}
           highlightMode={sortMode}
+          highlightedTaskIndexes={highlightedTaskIndexes}
           onEditTask={onEditTask}
           onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}
@@ -103,6 +107,7 @@ export default function PriorityMatrixSection({
           colorScheme="gray"
           items={matrix.consider}
           highlightMode={sortMode}
+          highlightedTaskIndexes={highlightedTaskIndexes}
           onEditTask={onEditTask}
           onRenameTask={onRenameTask}
           onToggleTask={onToggleTask}

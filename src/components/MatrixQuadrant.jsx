@@ -15,7 +15,8 @@ export default function MatrixQuadrant({
   onDropTask,
   quadrantKey,
   onEffortChange,
-  highlightMode
+  highlightMode,
+  highlightedTaskIndexes
 }) {
   const [isHover, setHover] = useState(false);
   const baseGradient = `linear(to-br, ${colorScheme}.50, white)`;
@@ -90,6 +91,7 @@ export default function MatrixQuadrant({
               onToggleDone={onToggleTask}
               onEffortChange={onEffortChange}
               highlightMode={highlightMode}
+              highlightedTaskIndexes={highlightedTaskIndexes}
               draggable={Boolean(onDropTask)}
             />
           ))}

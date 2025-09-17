@@ -25,6 +25,7 @@ import {
   UNASSIGNED_LABEL,
   MATRIX_SORTS,
   classifyTaskPriority,
+  selectHighlightTaskIndexes,
   shouldIncludeTaskInMatrix,
   sortMatrixEntries
 } from "./matrix.js";
@@ -202,8 +203,10 @@ export default function App() {
     return handle;
   }, []);
 
+  const highlightNow = useMemo(() => new Date(), [tasks, matrixFilters, matrixSortMode]);
+
   const matrix = useMemo(() => {
-    const now = new Date();
+    const now = highlightNow;
     const groups = {
       today: [],
       schedule: [],
@@ -234,7 +237,16 @@ export default function App() {
       delegate: sortMatrixEntries(groups.delegate, matrixSortMode),
       consider: sortMatrixEntries(groups.consider, matrixSortMode)
     };
-  }, [tasks, matrixFilters, matrixSortMode]);
+  }, [tasks, matrixFilters, matrixSortMode, highlightNow]);
+
+  const highlightedTaskIndexes = useMemo(
+    () =>
+      selectHighlightTaskIndexes(tasks, matrixSortMode, {
+        filters: matrixFilters,
+        now: highlightNow
+      }),
+    [tasks, matrixSortMode, matrixFilters, highlightNow]
+  );
 
   const projectGroups = useMemo(
     () => projectSectionsFrom(tasks, projects, projectSortMode, matrixFilters),
@@ -796,6 +808,7 @@ export default function App() {
                     <PriorityMatrixSection
                       matrix={matrix}
                       sortMode={matrixSortMode}
+                      highlightedTaskIndexes={highlightedTaskIndexes}
                       onEditTask={handleOpenEditor}
                       onToggleTask={handleToggleDone}
                       onDropTask={handleMatrixDrop}
@@ -819,6 +832,7 @@ export default function App() {
                   onDropProject={handleProjectDrop}
                   onEffortChange={handleEffortCommit}
                   highlightMode={matrixSortMode}
+                  highlightedTaskIndexes={highlightedTaskIndexes}
                 />
               </TabPanel>
             </TabPanels>

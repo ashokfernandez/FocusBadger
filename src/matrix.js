@@ -63,7 +63,86 @@ export function classifyTaskPriority(task, now = new Date()) {
   };
 }
 
-export function getTaskMoodHighlight(task, highlightMode, { priority, now } = {}) {
+function resolveHighlightUrgency(task, now = new Date()) {
+  const rawUrgency = task?.urgency;
+  if (Number.isFinite(rawUrgency)) return rawUrgency;
+  return classifyTaskPriority(task, now).isUrgent ? 1 : 0;
+}
+
+function resolveHighlightImportance(task) {
+  const rawImportance = task?.importance;
+  return Number.isFinite(rawImportance) ? rawImportance : 0;
+}
+
+function resolveHighlightEffort(task) {
+  const rawEffort = task?.effort;
+  return Number.isFinite(rawEffort) ? rawEffort : Number.POSITIVE_INFINITY;
+}
+
+function compareHighlightCandidates(a, b) {
+  const urgencyDiff = b.urgency - a.urgency;
+  if (urgencyDiff !== 0) return urgencyDiff;
+
+  const importanceDiff = b.importance - a.importance;
+  if (importanceDiff !== 0) return importanceDiff;
+
+  const effortDiff = a.effort - b.effort;
+  if (effortDiff !== 0) return effortDiff;
+
+  const scoreDiff = score(b.task ?? {}) - score(a.task ?? {});
+  if (scoreDiff !== 0) return scoreDiff;
+
+  return a.index - b.index;
+}
+
+export function selectHighlightTaskIndexes(
+  tasks = [],
+  highlightMode,
+  { filters = [], limit = 5, now = new Date() } = {}
+) {
+  if (!highlightMode || !Array.isArray(tasks) || limit <= 0) {
+    return new Set();
+  }
+
+  const mode = highlightMode;
+  const candidates = [];
+
+  tasks.forEach((task, index) => {
+    if (!task || task.done) return;
+    if (!shouldIncludeTaskInMatrix(task, filters)) return;
+
+    const effortValue = resolveHighlightEffort(task);
+    const isLowEffortMode = mode === MATRIX_SORTS.LOW_EFFORT;
+    if (isLowEffortMode) {
+      if (!Number.isFinite(task?.effort)) return;
+      if (effortValue > LOW_EFFORT_MOOD_THRESHOLD) return;
+    }
+
+    candidates.push({
+      index,
+      task,
+      urgency: resolveHighlightUrgency(task, now),
+      importance: resolveHighlightImportance(task),
+      effort: effortValue
+    });
+  });
+
+  if (candidates.length === 0) {
+    return new Set();
+  }
+
+  candidates.sort(compareHighlightCandidates);
+
+  const selected = candidates.slice(0, limit).map((entry) => entry.index);
+  return new Set(selected);
+}
+
+export function getTaskMoodHighlight(task, highlightMode, {
+  priority,
+  now,
+  highlightedTaskIndexes,
+  taskIndex
+} = {}) {
   if (!highlightMode) {
     return { isPriorityHighlight: false, isLowEffortHighlight: false };
   }
@@ -72,16 +151,24 @@ export function getTaskMoodHighlight(task, highlightMode, { priority, now } = {}
   const isDone = Boolean(task?.done);
   const effort = task?.effort;
   const hasEffort = Number.isFinite(effort);
+  const hasSelection = highlightedTaskIndexes instanceof Set;
+  const isSelected = hasSelection && highlightedTaskIndexes.has(taskIndex ?? -1);
 
-  const isPriorityHighlight =
-    highlightMode === MATRIX_SORTS.SCORE && resolvedPriority.isUrgent && resolvedPriority.isImportant && !isDone;
-  const isLowEffortHighlight =
-    highlightMode === MATRIX_SORTS.LOW_EFFORT && hasEffort && effort <= LOW_EFFORT_MOOD_THRESHOLD && !isDone;
+  const isPriorityHighlight = !isDone
+    && (highlightMode === MATRIX_SORTS.SCORE)
+    && (hasSelection ? isSelected : resolvedPriority.isUrgent && resolvedPriority.isImportant);
+
+  const isLowEffortHighlight = !isDone
+    && highlightMode === MATRIX_SORTS.LOW_EFFORT
+    && (hasSelection ? isSelected : hasEffort && effort <= LOW_EFFORT_MOOD_THRESHOLD);
 
   return { isPriorityHighlight, isLowEffortHighlight };
 }
 
-export function getProjectMoodHighlight(items = [], highlightMode, { now } = {}) {
+export function getProjectMoodHighlight(items = [], highlightMode, {
+  now,
+  highlightedTaskIndexes
+} = {}) {
   if (!highlightMode || !Array.isArray(items) || items.length === 0) {
     return { hasPriorityHighlight: false, hasLowEffortHighlight: false };
   }
@@ -93,7 +180,9 @@ export function getProjectMoodHighlight(items = [], highlightMode, { now } = {})
       if (!task) return acc;
       const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, {
         priority: entry.priority,
-        now
+        now,
+        highlightedTaskIndexes,
+        taskIndex: entry.index
       });
       return {
         hasPriorityHighlight: acc.hasPriorityHighlight || isPriorityHighlight,
