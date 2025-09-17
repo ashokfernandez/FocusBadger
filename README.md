@@ -1,32 +1,40 @@
 # FocusBadger
 
-[View the live board](https://focusbadger.github.io/FocusBadger/)
+[Jump straight to the live board](https://focusbadger.github.io/FocusBadger/)
 
-FocusBadger is your personal strategy room for everything you need to get done. It keeps your projects and tasks in one calm view so you can decide what truly matters, lean on smart priorities, and stay in motion without juggling a dozen tools.
+FocusBadger is the cheeky little strategist that keeps your todo list honest. Drop in every task fighting for attention and it whispers back a plan: what’s urgent, what’s truly important, how heavy each lift will be, and which move fits your current mood. It’s your friendly accomplice for building momentum, not another dashboard nagging you about overdue chores.
 
 ## Why FocusBadger?
 
-- **Stay grounded.** Bring work, home, and side quests into a single board so nothing slips.
-- **Work intentionally.** Each task carries urgency, importance, and effort so you can spot high-impact wins at a glance.
-- **Reflect quickly.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan in minutes.
-- **Own your data.** Everything lives in a simple text file that plays nicely with Git, scripts, and AI helpers.
+- **See the whole story.** Each card shows urgency, importance, and effort so you can quickly decide which bets matter now and which can wait.
+- **Match the moment.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan, then flip the mood switch for quick wins or deep work.
+- **Stay grounded.** Gather work, home, and side quests into one calm view so nothing slips.
+- **Own your data.** Everything lives in approachable JSONL that plays nicely with Git, scripts, and AI helpers.
 
 ## What you can do
 
 - Capture tasks instantly and group them by project without touching a database.
-- Sort by priority or due date, then zoom into an Eisenhower-style view to rebalance your workload.
-- Use the assistant workflow to hand tasks to an LLM for batch edits, summaries, or brainstorming ideas.
-- Review progress at the end of the week with built-in filters that spotlight wins and upcoming risks.
+- Sort by priority or due date, then zoom into the Eisenhower-style matrix to rebalance your workload.
+- Use the assistant workflow to hand tasks to an LLM for batch edits, summaries, or brainstorms.
+- Review progress at the end of the week with filters that spotlight wins and upcoming risks.
 
-Curious how the task file is structured? Check out the [data guide](DATA.md).
+Curious how the task file is structured? Peek at the [data guide](DATA.md).
 
-## How it keeps you focused
+## A week with FocusBadger
 
-FocusBadger ships as a static site, so you can run it locally or host it anywhere. It stores your tasks in a human-friendly JSONL file, meaning:
+1. Brain-dump projects and tasks into the board, tagging owners or themes as you go.
+2. Drag cards between lanes to sketch the rhythm of the week.
+3. Hit the mood switch whenever your energy shifts—FocusBadger reshuffles to highlight the next best bite.
+4. Share the board with an AI assistant for fast edits or summaries using the workflow in [AI_ASSIST.md](AI_ASSIST.md).
+5. Celebrate wins and capture learnings before rolling unfinished work forward.
+
+## Make it your own
+
+FocusBadger ships as a static site, so you can run it locally or host it anywhere. Because your tasks live in a human-friendly JSONL file:
 
 - You can version everything with Git or sync it through your own cloud drive.
 - Edits stay transparent—line-by-line changes make reviews and automation simple.
-- AI assistants can safely add, update, or summarize tasks using the prompt workflow described in [AI_ASSIST.md](AI_ASSIST.md).
+- Collaborators and AI co-pilots can safely add, update, or summarise tasks using the same prompts.
 
 ## Getting started locally
 
@@ -35,7 +43,7 @@ FocusBadger ships as a static site, so you can run it locally or host it anywher
 3. Run `npm test` to make sure everything still behaves.
 4. Open the Assistant workflow modal to copy the AI prompt and share data with your co-pilot.
 
-## Learn more
+## Go deeper
 
 - [DESIGN.md](DESIGN.md) — guiding principles, architecture notes, and non-goals.
 - [TODOS.md](TODOS.md) — feature roadmap and acceptance criteria for contributors.
