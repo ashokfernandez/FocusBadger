@@ -31,6 +31,8 @@ import {
   Text,
   Textarea,
   Tooltip,
+  Wrap,
+  WrapItem,
   useDisclosure
 } from "@chakra-ui/react";
 import { CheckIcon, CheckCircleIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
@@ -46,6 +48,11 @@ import {
   renameProject as renameProjectHelper,
   compareInsensitive
 } from "./projects.js";
+import {
+  ALL_PROJECTS,
+  UNASSIGNED_LABEL,
+  shouldIncludeTaskInMatrix
+} from "./matrix.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -65,7 +72,7 @@ function parseTags(value) {
 
 const MotionCircle = motion(Box);
 const MotionBadge = motion(Badge);
-const UNASSIGNED_LABEL = "Unassigned";
+const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
 
 function SaveStatusIndicator({ state }) {
   if (state.status === "saving") {
@@ -124,6 +131,34 @@ function SaveStatusIndicator({ state }) {
     <Badge colorScheme="gray" variant="subtle" fontSize="xs">
       Ready
     </Badge>
+  );
+}
+
+function MatrixFilterChips({ options, active, onToggle }) {
+  const renderLabel = useCallback((value) => {
+    if (value === ALL_PROJECTS) return "All projects";
+    if (value === UNASSIGNED_LABEL) return "Unassigned";
+    return value;
+  }, []);
+
+  return (
+    <Wrap spacing={2} mt={1}>
+      {options.map((option) => {
+        const selected = active.includes(option);
+        return (
+          <WrapItem key={option}>
+            <Button
+              size="xs"
+              variant={selected ? "solid" : "outline"}
+              colorScheme={selected ? "purple" : "gray"}
+              onClick={() => onToggle(option)}
+            >
+              {renderLabel(option)}
+            </Button>
+          </WrapItem>
+        );
+      })}
+    </Wrap>
   );
 }
 
@@ -794,6 +829,7 @@ export default function App() {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
@@ -812,6 +848,23 @@ export default function App() {
       return derived;
     });
   }, [tasks]);
+
+  useEffect(() => {
+    setMatrixFilters((prev) => {
+      if (prev.includes(ALL_PROJECTS)) return DEFAULT_MATRIX_FILTERS;
+      const allowed = new Set(projects.concat([UNASSIGNED_LABEL]));
+      const next = prev.filter((value) => value === ALL_PROJECTS || allowed.has(value));
+      return next.length ? next : DEFAULT_MATRIX_FILTERS;
+    });
+  }, [projects]);
+
+  const matrixFilterOptions = useMemo(() => {
+    const options = [ALL_PROJECTS, ...projects];
+    if (!projects.includes(UNASSIGNED_LABEL)) {
+      options.push(UNASSIGNED_LABEL);
+    }
+    return options;
+  }, [projects]);
 
   const clearPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -859,6 +912,8 @@ export default function App() {
         urgencyScore >= 3 || (rawUrgency == null && dueBucket === "Today");
       const isImportant = importanceScore >= 3;
 
+      if (!shouldIncludeTaskInMatrix(task, matrixFilters)) return;
+
       if (isUrgent && isImportant) {
         groups.today.push({ task, index });
       } else if (!isUrgent && isImportant) {
@@ -881,7 +936,7 @@ export default function App() {
     });
 
     return groups;
-  }, [tasks]);
+  }, [tasks, matrixFilters]);
 
   const projectGroups = useMemo(() => {
     const map = new Map();
@@ -1112,6 +1167,20 @@ export default function App() {
     [updateTask]
   );
 
+  const toggleMatrixFilter = useCallback((filter) => {
+    setMatrixFilters((prev) => {
+      if (filter === ALL_PROJECTS) {
+        return DEFAULT_MATRIX_FILTERS;
+      }
+      const withoutAll = prev.filter((value) => value !== ALL_PROJECTS);
+      const hasFilter = withoutAll.includes(filter);
+      const next = hasFilter
+        ? withoutAll.filter((value) => value !== filter)
+        : [...withoutAll, filter];
+      return next.length ? next : DEFAULT_MATRIX_FILTERS;
+    });
+  }, []);
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -1214,10 +1283,15 @@ export default function App() {
                 Urgency is influenced by due dates and explicit urgency scores; importance relies on
                 the importance score. Everything here stays synced with the project lists below.
               </Text>
+              <MatrixFilterChips
+                options={matrixFilterOptions}
+                active={matrixFilters}
+                onToggle={toggleMatrixFilter}
+              />
             </Stack>
             <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
               <MatrixQuadrant
-                title="Today"
+                title="Why aren't you doing this now?"
                 subtitle="Urgent and important"
                 colorScheme="red"
                 items={matrix.today}
@@ -1227,7 +1301,7 @@ export default function App() {
                 quadrantKey="today"
               />
               <MatrixQuadrant
-                title="Schedule"
+                title="When can you do this later?"
                 subtitle="Important, not urgent"
                 colorScheme="purple"
                 items={matrix.schedule}
@@ -1238,7 +1312,7 @@ export default function App() {
                 quadrantKey="schedule"
               />
               <MatrixQuadrant
-                title="Delegate"
+                title="Who can help you with this?"
                 subtitle="Urgent, not important"
                 colorScheme="orange"
                 items={matrix.delegate}
