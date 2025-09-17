@@ -53,6 +53,7 @@ import {
   UNASSIGNED_LABEL,
   shouldIncludeTaskInMatrix
 } from "./matrix.js";
+import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -1258,20 +1259,26 @@ export default function App() {
               Focus on what matters
             </Text>
           </Box>
-          <Flex ml={{ md: "auto" }} align="center" gap={4}>
+          <Flex {...HEADER_LAYOUT.container}>
             <SaveStatusIndicator state={saveState} />
-            <ButtonGroup spacing={3}>
-              <Button variant="outline" onClick={projectManagerDisclosure.onOpen}>
+            <Stack {...HEADER_LAYOUT.stack}>
+              <Button
+                variant="outline"
+                onClick={projectManagerDisclosure.onOpen}
+                {...HEADER_LAYOUT.button}
+              >
                 Manage projects
               </Button>
-              <Button variant="ghost" onClick={handleLoadSample}>
+              <Button variant="ghost" onClick={handleLoadSample} {...HEADER_LAYOUT.button}>
                 Load sample
               </Button>
-              <Button onClick={handleOpenFile}>Open tasks.jsonl</Button>
-              <Button colorScheme="blue" onClick={handleSaveFile}>
+              <Button onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
+                Open tasks.jsonl
+              </Button>
+              <Button colorScheme="blue" onClick={handleSaveFile} {...HEADER_LAYOUT.button}>
                 Save
               </Button>
-            </ButtonGroup>
+            </Stack>
           </Flex>
         </Flex>
 
@@ -1288,7 +1295,7 @@ export default function App() {
                 onToggle={toggleMatrixFilter}
               />
             </Stack>
-            <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
+            <SimpleGrid columns={MATRIX_GRID_COLUMNS} spacing={6}>
               <MatrixQuadrant
                 title="Why aren't you doing this now?"
                 subtitle="Urgent and important"
