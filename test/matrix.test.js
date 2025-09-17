@@ -5,6 +5,7 @@ import {
   MATRIX_SORTS,
   LOW_EFFORT_MOOD_THRESHOLD,
   compareMatrixEntries,
+  getProjectMoodHighlight,
   getTaskMoodHighlight,
   normalizeProjectFilterKey,
   shouldIncludeTaskInMatrix,
@@ -117,5 +118,52 @@ describe("task mood highlight", () => {
     const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(sample, undefined);
     expect(isPriorityHighlight).toBe(false);
     expect(isLowEffortHighlight).toBe(false);
+  });
+});
+
+describe("project mood highlight", () => {
+  it("surfaces priority highlight when any task qualifies", () => {
+    const items = [
+      { task: { urgency: 1, importance: 1 } },
+      { task: { urgency: 5, importance: 5 } }
+    ];
+
+    const { hasPriorityHighlight, hasLowEffortHighlight } = getProjectMoodHighlight(
+      items,
+      MATRIX_SORTS.SCORE
+    );
+
+    expect(hasPriorityHighlight).toBe(true);
+    expect(hasLowEffortHighlight).toBe(false);
+  });
+
+  it("surfaces low effort highlight when any task qualifies", () => {
+    const items = [
+      { task: { urgency: 5, importance: 5, effort: LOW_EFFORT_MOOD_THRESHOLD + 2 } },
+      { task: { urgency: 1, importance: 1, effort: LOW_EFFORT_MOOD_THRESHOLD } }
+    ];
+
+    const { hasPriorityHighlight, hasLowEffortHighlight } = getProjectMoodHighlight(
+      items,
+      MATRIX_SORTS.LOW_EFFORT
+    );
+
+    expect(hasPriorityHighlight).toBe(false);
+    expect(hasLowEffortHighlight).toBe(true);
+  });
+
+  it("ignores done tasks when computing highlights", () => {
+    const items = [
+      { task: { urgency: 5, importance: 5, done: true } },
+      { task: { urgency: 2, importance: 2, effort: LOW_EFFORT_MOOD_THRESHOLD + 4 } }
+    ];
+
+    const { hasPriorityHighlight, hasLowEffortHighlight } = getProjectMoodHighlight(
+      items,
+      MATRIX_SORTS.SCORE
+    );
+
+    expect(hasPriorityHighlight).toBe(false);
+    expect(hasLowEffortHighlight).toBe(false);
   });
 });

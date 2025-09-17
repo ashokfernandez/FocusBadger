@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Box, Flex, Stack, Text, Textarea, Tooltip } from "@chakra-ui/react";
 import TaskCard from "./TaskCard.jsx";
+import { getProjectMoodHighlight } from "../matrix.js";
 
 export default function ProjectSection({
   name,
@@ -20,6 +21,17 @@ export default function ProjectSection({
   const [error, setError] = useState("");
   const [isEditing, setEditing] = useState(false);
   const canRename = useMemo(() => Boolean(projectKey && onRenameProject), [projectKey, onRenameProject]);
+  const { hasPriorityHighlight, hasLowEffortHighlight } = useMemo(
+    () => getProjectMoodHighlight(items, highlightMode),
+    [items, highlightMode]
+  );
+  const projectBorderColor = hasPriorityHighlight
+    ? "purple.400"
+    : hasLowEffortHighlight
+      ? "green.300"
+      : "gray.100";
+  const projectBackground = hasLowEffortHighlight && !hasPriorityHighlight ? "green.50" : "white";
+  const projectShadow = hasPriorityHighlight ? "xl" : hasLowEffortHighlight ? "lg" : "md";
 
   useEffect(() => {
     setValue(name);
@@ -81,10 +93,10 @@ export default function ProjectSection({
     <Box
       borderWidth="1px"
       borderRadius="2xl"
-      bg="white"
+      bg={allowDrop && isHover ? "purple.50" : projectBackground}
       p={5}
-      boxShadow={allowDrop && isHover ? "xl" : "md"}
-      borderColor={allowDrop && isHover ? "purple.400" : "gray.100"}
+      boxShadow={allowDrop && isHover ? "xl" : projectShadow}
+      borderColor={allowDrop && isHover ? "purple.400" : projectBorderColor}
       borderStyle={allowDrop ? "dashed" : "solid"}
       onDragOver={allowDrop ? handleDragOver : undefined}
       onDragLeave={allowDrop ? handleDragLeave : undefined}

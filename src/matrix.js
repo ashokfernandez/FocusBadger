@@ -80,3 +80,26 @@ export function getTaskMoodHighlight(task, highlightMode, { priority, now } = {}
 
   return { isPriorityHighlight, isLowEffortHighlight };
 }
+
+export function getProjectMoodHighlight(items = [], highlightMode, { now } = {}) {
+  if (!highlightMode || !Array.isArray(items) || items.length === 0) {
+    return { hasPriorityHighlight: false, hasLowEffortHighlight: false };
+  }
+
+  return items.reduce(
+    (acc, item) => {
+      const entry = item ?? {};
+      const task = entry.task ?? entry;
+      if (!task) return acc;
+      const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, {
+        priority: entry.priority,
+        now
+      });
+      return {
+        hasPriorityHighlight: acc.hasPriorityHighlight || isPriorityHighlight,
+        hasLowEffortHighlight: acc.hasLowEffortHighlight || isLowEffortHighlight
+      };
+    },
+    { hasPriorityHighlight: false, hasLowEffortHighlight: false }
+  );
+}
