@@ -1,10 +1,13 @@
 import { Children, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
+  AlertIcon,
   Badge,
   Box,
   Button,
   ButtonGroup,
   Checkbox,
+  CloseButton,
   Container,
   Flex,
   FormControl,
@@ -45,7 +48,7 @@ import {
   useClipboard,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, ChevronDownIcon, CopyIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, ChevronDownIcon, CopyIcon, DeleteIcon, EditIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import { bucket, score } from "./model.js";
 import {
@@ -67,6 +70,7 @@ import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
 import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
 import { buildJSONExport, parseJSONInput } from "./jsonEditor.js";
+import { createTaskPayload } from "./taskFactory.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -88,7 +92,226 @@ const MotionCircle = motion(Box);
 const MotionBadge = motion(Badge);
 const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
 
-function SaveStatusIndicator({ state }) {
+function AddTaskModal({ isOpen, onClose, onCreate, projects = [], onCreateProject }) {
+  const [form, setForm] = useState({
+    title: "",
+    project: "",
+    due: "",
+    importance: "",
+    urgency: "",
+    effort: 3,
+    tags: "",
+    notes: "",
+    projectMode: "none",
+    newProjectName: ""
+  });
+  const [error, setError] = useState("");
+  const [projectError, setProjectError] = useState("");
+  const titleRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setForm({
+      title: "",
+      project: "",
+      due: "",
+      importance: "",
+      urgency: "",
+      effort: 3,
+      tags: "",
+      notes: "",
+      projectMode: "none",
+      newProjectName: ""
+    });
+    setError("");
+    setProjectError("");
+  }, [isOpen]);
+
+  const handleChange = useCallback((field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleProjectSelect = useCallback((value) => {
+    if (value === "__new__") {
+      setForm((prev) => ({ ...prev, projectMode: "new", project: "", newProjectName: "" }));
+    } else if (value) {
+      setForm((prev) => ({ ...prev, project: value, projectMode: "existing", newProjectName: "" }));
+    } else {
+      setForm((prev) => ({ ...prev, project: "", projectMode: "none", newProjectName: "" }));
+    }
+    setProjectError("");
+  }, []);
+
+  const handleNewProjectNameChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, newProjectName: value }));
+    setProjectError("");
+  }, []);
+
+  const handleEffortChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, effort: value }));
+  }, []);
+
+  const handleSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+      const title = form.title.trim();
+      if (!title) {
+        setError("Title is required");
+        return;
+      }
+
+      let projectValue = undefined;
+      if (form.projectMode === "new") {
+        const result = onCreateProject?.(form.newProjectName ?? "");
+        if (!result || !result.ok) {
+          setProjectError(result?.message ?? "Project name is required");
+          return;
+        }
+        projectValue = result.name;
+      } else if (form.projectMode === "existing") {
+        projectValue = form.project || undefined;
+      }
+
+      const payload = {
+        title,
+        project: projectValue,
+        due: form.due.trim() || undefined,
+        importance: sanitizeNumber(form.importance),
+        urgency: sanitizeNumber(form.urgency),
+        effort: sanitizeNumber(form.effort),
+        tags: parseTags(form.tags),
+        notes: form.notes.trim() || undefined
+      };
+
+      const outcome = onCreate(payload);
+      if (!outcome?.ok) {
+        setError(outcome?.error ?? "Unable to create task");
+        return;
+      }
+      onClose();
+    },
+    [form, onCreate, onCreateProject, onClose]
+  );
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} initialFocusRef={titleRef} size="lg">
+      <ModalOverlay />
+      <ModalContent as="form" onSubmit={handleSubmit}>
+        <ModalHeader>Add task</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <Stack spacing={5}>
+            <FormControl isRequired isInvalid={Boolean(error)}>
+              <FormLabel>Title</FormLabel>
+              <Input
+                ref={titleRef}
+                value={form.title}
+                onChange={(event) => handleChange("title", event.target.value)}
+              />
+              {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
+            </FormControl>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              <FormControl isInvalid={Boolean(projectError)}>
+                <FormLabel>Project</FormLabel>
+                <Select
+                  value={
+                    form.projectMode === "new" ? "__new__" : form.project || ""
+                  }
+                  onChange={(event) => handleProjectSelect(event.target.value)}
+                >
+                  <option value="">No project</option>
+                  {projects.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value="__new__">Create new project…</option>
+                </Select>
+                {form.projectMode === "new" ? (
+                  <Input
+                    mt={2}
+                    placeholder="New project name"
+                    value={form.newProjectName}
+                    onChange={(event) => handleNewProjectNameChange(event.target.value)}
+                  />
+                ) : null}
+                {projectError ? <FormErrorMessage>{projectError}</FormErrorMessage> : null}
+              </FormControl>
+              <FormControl>
+                <FormLabel>Due date</FormLabel>
+                <Input
+                  type="date"
+                  value={form.due}
+                  onChange={(event) => handleChange("due", event.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Importance</FormLabel>
+                <NumberInput
+                  min={0}
+                  max={5}
+                  value={form.importance}
+                  onChange={(value) => handleChange("importance", value)}
+                >
+                  <NumberInputField placeholder="0-5" />
+                </NumberInput>
+              </FormControl>
+              <FormControl>
+                <FormLabel>Urgency</FormLabel>
+                <NumberInput
+                  min={0}
+                  max={5}
+                  value={form.urgency}
+                  onChange={(value) => handleChange("urgency", value)}
+                >
+                  <NumberInputField placeholder="0-5" />
+                </NumberInput>
+              </FormControl>
+            </SimpleGrid>
+            <FormControl>
+              <FormLabel>Effort</FormLabel>
+              <EffortSlider
+                value={form.effort}
+                defaultValue={3}
+                onChange={handleEffortChange}
+                size="sm"
+                isCompact
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Tags</FormLabel>
+              <Input
+                placeholder="comma separated"
+                value={form.tags}
+                onChange={(event) => handleChange("tags", event.target.value)}
+              />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Notes</FormLabel>
+              <Textarea
+                value={form.notes}
+                onChange={(event) => handleChange("notes", event.target.value)}
+                rows={3}
+              />
+            </FormControl>
+          </Stack>
+        </ModalBody>
+        <ModalFooter>
+          <HStack spacing={3}>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="blue" type="submit">
+              Add task
+            </Button>
+          </HStack>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+function SaveStatusIndicator({ state, onSave }) {
   if (state.status === "saving") {
     return (
       <HStack spacing={2} color="blue.500" fontSize="sm">
@@ -100,35 +323,56 @@ function SaveStatusIndicator({ state }) {
 
   if (state.status === "saved") {
     return (
-      <MotionBadge
-        colorScheme="green"
-        variant="subtle"
-        fontSize="xs"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.25 }}
-        display="inline-flex"
-        alignItems="center"
-        gap={1}
-      >
-        <CheckCircleIcon /> Saved
-      </MotionBadge>
+      <HStack spacing={3} align="center">
+        <MotionBadge
+          colorScheme="green"
+          variant="subtle"
+          fontSize="xs"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.25 }}
+          display="inline-flex"
+          alignItems="center"
+          gap={1}
+        >
+          <CheckCircleIcon /> Saved
+        </MotionBadge>
+        {onSave ? (
+          <Button size="xs" variant="outline" onClick={onSave}>
+            Save anyway
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
   if (state.status === "dirty") {
     return (
-      <Badge colorScheme="orange" variant="subtle" fontSize="xs">
-        Unsaved changes
-      </Badge>
+      <HStack spacing={3} align="center">
+        <Badge colorScheme="orange" variant="subtle" fontSize="xs">
+          Unsaved changes
+        </Badge>
+        {onSave ? (
+          <Button size="xs" colorScheme="orange" onClick={onSave}>
+            Save now
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
   if (state.status === "unsynced") {
     return (
-      <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-        Changes not linked to a file
-      </Badge>
+      <HStack spacing={3} align="center">
+        <Badge colorScheme="purple" variant="subtle" fontSize="xs">
+          Unsynced changes
+        </Badge>
+        {onSave ? (
+          <Button size="xs" variant="outline" onClick={onSave}>
+            Save
+          </Button>
+        ) : null}
+      </HStack>
     );
   }
 
@@ -142,9 +386,16 @@ function SaveStatusIndicator({ state }) {
   }
 
   return (
-    <Badge colorScheme="gray" variant="subtle" fontSize="xs">
-      Ready
-    </Badge>
+    <HStack spacing={3} align="center">
+      <Badge colorScheme="gray" variant="subtle" fontSize="xs">
+        Ready
+      </Badge>
+      {onSave ? (
+        <Button size="xs" variant="outline" onClick={onSave}>
+          Save now
+        </Button>
+      ) : null}
+    </HStack>
   );
 }
 
@@ -974,6 +1225,7 @@ export default function App() {
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
+  const addTaskDisclosure = useDisclosure();
   const jsonModal = useDisclosure();
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
@@ -983,6 +1235,7 @@ export default function App() {
   const [jsonError, setJsonError] = useState("");
   const [jsonParsed, setJsonParsed] = useState(null);
   const [isJsonSaving, setIsJsonSaving] = useState(false);
+  const [showDemoBanner, setShowDemoBanner] = useState(false);
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
@@ -1005,8 +1258,9 @@ export default function App() {
 
   useEffect(() => {
     if (!jsonModal.isOpen) return;
-    setJsonInputValue(jsonExportText);
+    if (jsonTabIndex !== 0) return;
     const initial = parseJSONInput(jsonExportText);
+    setJsonInputValue(jsonExportText);
     if (initial.ok) {
       setJsonParsed(initial);
       setJsonError("");
@@ -1014,7 +1268,14 @@ export default function App() {
       setJsonParsed(null);
       setJsonError(initial.error ?? "");
     }
-  }, [jsonModal.isOpen, jsonExportText]);
+  }, [jsonModal.isOpen, jsonExportText, jsonTabIndex]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.showOpenFilePicker) {
+      setShowDemoBanner(true);
+    }
+  }, []);
 
   useEffect(() => {
     setMatrixFilters((prev) => {
@@ -1325,15 +1586,40 @@ export default function App() {
     setProjectSortMode((prev) => (prev === value ? prev : value));
   }, []);
 
-  const openJsonExport = useCallback(() => {
-    setJsonTabIndex(0);
-    jsonModal.onOpen();
-  }, [jsonModal]);
+  const handleCreateTask = useCallback(
+    (draft) => {
+      const result = createTaskPayload(draft);
+      if (!result.ok) {
+        return result;
+      }
+      setTasks((prev) => [...prev, result.task]);
+      return { ok: true };
+    },
+    []
+  );
 
-  const openJsonImport = useCallback(() => {
-    setJsonTabIndex(1);
-    jsonModal.onOpen();
-  }, [jsonModal]);
+  const openAssistantIo = useCallback(
+    (tab = 0) => {
+      setJsonTabIndex(tab);
+      if (tab === 0) {
+        const initial = parseJSONInput(jsonExportText);
+        setJsonInputValue(jsonExportText);
+        if (initial.ok) {
+          setJsonParsed(initial);
+          setJsonError("");
+        } else {
+          setJsonParsed(null);
+          setJsonError(initial.error ?? "");
+        }
+      } else {
+        setJsonInputValue("");
+        setJsonParsed(null);
+        setJsonError("");
+      }
+      jsonModal.onOpen();
+    },
+    [jsonExportText, jsonModal]
+  );
 
   const handleJsonTabChange = useCallback(
     (index) => {
@@ -1427,6 +1713,7 @@ export default function App() {
         setProjects(projectList);
         setTasks(taskRecords);
         setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
+        setShowDemoBanner(false);
         return;
       } catch (error) {
         console.error(error);
@@ -1482,6 +1769,21 @@ export default function App() {
   return (
     <Container maxW="7xl" py={10}>
       <Stack spacing={10}>
+        {showDemoBanner ? (
+          <Alert status="info" variant="left-accent" borderRadius="xl" alignItems="center">
+            <AlertIcon />
+            <Box flex="1">
+              <Text fontWeight="medium">Exploring TaskBadger online?</Text>
+              <Text fontSize="sm" color="gray.700">
+                Load demo data to try the workspace without linking a local file. You can dismiss this banner after loading.
+              </Text>
+            </Box>
+            <Button size="sm" colorScheme="purple" onClick={handleLoadSample} mr={2}>
+              Load demo data
+            </Button>
+            <CloseButton position="static" onClick={() => setShowDemoBanner(false)} />
+          </Alert>
+        ) : null}
         <Flex align={{ base: "stretch", md: "center" }} direction={{ base: "column", md: "row" }} gap={4}>
           <Box>
             <Heading size="lg">TaskBadger</Heading>
@@ -1489,33 +1791,40 @@ export default function App() {
               Focus on what matters
             </Text>
           </Box>
-          <Flex {...HEADER_LAYOUT.container}>
-            <SaveStatusIndicator state={saveState} />
-            <Stack {...HEADER_LAYOUT.stack}>
-              <Button
-                variant="outline"
-                onClick={projectManagerDisclosure.onOpen}
-                {...HEADER_LAYOUT.button}
-              >
-                Manage projects
+        <Flex {...HEADER_LAYOUT.container}>
+          <SaveStatusIndicator state={saveState} onSave={handleSaveFile} />
+          <Wrap spacing={2} justify="flex-end">
+            <WrapItem>
+              <Button colorScheme="purple" onClick={addTaskDisclosure.onOpen} {...HEADER_LAYOUT.button}>
+                Add task
               </Button>
-              <Button variant="ghost" onClick={handleLoadSample} {...HEADER_LAYOUT.button}>
-                Load sample
+            </WrapItem>
+            <WrapItem>
+              <Button variant="outline" onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
+                Open file
               </Button>
-              <Button variant="outline" onClick={openJsonExport} {...HEADER_LAYOUT.button}>
-                Show JSON
-              </Button>
-              <Button variant="outline" onClick={openJsonImport} {...HEADER_LAYOUT.button}>
-                Paste JSON
-              </Button>
-              <Button onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
-                Open tasks.jsonl
-              </Button>
-              <Button colorScheme="blue" onClick={handleSaveFile} {...HEADER_LAYOUT.button}>
-                Save
-              </Button>
-            </Stack>
-          </Flex>
+            </WrapItem>
+            <WrapItem>
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={Button}
+                  {...HEADER_LAYOUT.button}
+                  bgGradient="linear(to-r, purple.500, pink.500)"
+                  color="white"
+                  _hover={{ bgGradient: "linear(to-r, purple.600, pink.600)" }}
+                  _active={{ bgGradient: "linear(to-r, purple.700, pink.700)" }}
+                  rightIcon={<ChevronDownIcon />}
+                >
+                  Assistant I/O
+                </MenuButton>
+                <MenuList>
+                  <MenuItem onClick={() => openAssistantIo(0)}>Copy snapshot</MenuItem>
+                  <MenuItem onClick={() => openAssistantIo(1)}>Apply assistant output</MenuItem>
+                </MenuList>
+              </Menu>
+            </WrapItem>
+          </Wrap>
+        </Flex>
         </Flex>
 
         <GlobalToolbar
@@ -1599,11 +1908,24 @@ export default function App() {
 
           <Box>
             <Stack spacing={3} mb={4}>
-              <Heading size="md">Projects</Heading>
-              <Text fontSize="sm" color="gray.500">
-                Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
-                section stays in sync.
-              </Text>
+              <Flex align="center" justify="space-between">
+                <Box>
+                  <Heading size="md">Projects</Heading>
+                  <Text fontSize="sm" color="gray.500">
+                    Organise tasks by project. Filters and sorting follow the workspace toolbar above so every
+                    section stays in sync.
+                  </Text>
+                </Box>
+                <Tooltip label="Manage projects" placement="top">
+                  <IconButton
+                    aria-label="Manage projects"
+                    icon={<EditIcon />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={projectManagerDisclosure.onOpen}
+                  />
+                </Tooltip>
+              </Flex>
             </Stack>
             <Stack spacing={5}>
               {projectGroups.map(({ name, projectKey, items }) => (
@@ -1641,6 +1963,13 @@ export default function App() {
           onCreateProject={handleInlineProjectCreate}
         />
       ) : null}
+      <AddTaskModal
+        isOpen={addTaskDisclosure.isOpen}
+        onClose={addTaskDisclosure.onClose}
+        onCreate={handleCreateTask}
+        projects={projects}
+        onCreateProject={handleInlineProjectCreate}
+      />
       <Modal
         isOpen={jsonModal.isOpen}
         onClose={jsonModal.onClose}
@@ -1650,17 +1979,20 @@ export default function App() {
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>JSON export &amp; import</ModalHeader>
+          <ModalHeader>Assistant workflow</ModalHeader>
           <ModalCloseButton isDisabled={isJsonSaving} />
           <ModalBody>
             <Tabs index={jsonTabIndex} onChange={handleJsonTabChange} isLazy isFitted variant="enclosed">
               <TabList>
-                <Tab>Show JSON</Tab>
-                <Tab>Update from JSON</Tab>
+                <Tab>Copy for assistant</Tab>
+                <Tab>Apply assistant output</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel px={0} pt={4} pb={2}>
                   <Stack spacing={4} align="flex-start">
+                    <Text fontSize="sm" color="gray.600">
+                      Share this payload with your LLM assistant. It includes projects first followed by tasks.
+                    </Text>
                     <Button
                       size="sm"
                       variant={clipboard.hasCopied ? "solid" : "outline"}
@@ -1689,6 +2021,9 @@ export default function App() {
                 </TabPanel>
                 <TabPanel px={0} pt={4} pb={2}>
                   <Stack spacing={4}>
+                    <Text fontSize="sm" color="gray.600">
+                      Paste the assistant output below. JSON arrays and JSONL are both accepted. We validate every task before applying.
+                    </Text>
                     <FormControl isInvalid={Boolean(jsonError)}>
                       <FormLabel>Paste updated JSON</FormLabel>
                       <Textarea
@@ -1718,7 +2053,7 @@ export default function App() {
                   isDisabled={!canSaveJson || isJsonSaving}
                   isLoading={isJsonSaving}
                 >
-                  Save JSON
+                  Apply JSON
                 </Button>
               ) : null}
             </HStack>

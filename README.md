@@ -59,6 +59,7 @@ src/
   projects.js          helpers for project lists and snapshots
   matrix.js            constants and filters for matrix view
   jsonEditor.js        export helpers and validation for JSON editing
+  taskFactory.js       helpers for creating new task payloads
 
 public/
   tasks.json           Hosted demo snapshot for GitHub Pages
@@ -69,6 +70,7 @@ test/
   jsonl.test.js        Unit tests for JSONL helpers
   matrix.test.js       Matrix filtering logic
   jsonEditor.test.js   JSON import/export validation
+  taskFactory.test.js  Task creation helper tests
   projects.test.js     Project helper mutations
 
 .github/workflows/
@@ -175,9 +177,9 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
   - [x] Project filter built from data plus All <!-- TASK:ui-filter-project --> (PR #8)
   - [x] Sort selector: Score, Due date, Title <!-- TASK:ui-sort --> (PR #8)
 
-- [ ] Add task modal <!-- TASK:ui-add -->
-  - [ ] Validate title and optional fields <!-- TASK:ui-add-validate -->
-  - [ ] Generate `id` and timestamps <!-- TASK:ui-add-id -->
+- [x] Add task modal <!-- TASK:ui-add --> (PR #10)
+  - [x] Validate title and optional fields <!-- TASK:ui-add-validate --> (PR #10)
+  - [x] Generate `id` and timestamps <!-- TASK:ui-add-id --> (PR #10)
 
 ### Summaries and exports
 
