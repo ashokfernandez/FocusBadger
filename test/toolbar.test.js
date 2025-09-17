@@ -45,6 +45,18 @@ describe("project sections", () => {
     expect(sections[0].name).toBe(UNASSIGNED_LABEL);
     expect(sections[0].items.map((entry) => entry.index)).toEqual([3]);
   });
+
+  it("omits unassigned section when there are no unassigned tasks", () => {
+    const assignedOnly = tasks.slice(0, 3);
+    const sections = projectSectionsFrom(assignedOnly, projectList, TOOLBAR_SORTS.SCORE, [ALL_PROJECTS]);
+    expect(sections.map((section) => section.name)).toEqual(["Alpha", "Beta"]);
+  });
+
+  it("returns no sections when filtering for unassigned without matches", () => {
+    const assignedOnly = tasks.slice(0, 3);
+    const sections = projectSectionsFrom(assignedOnly, projectList, TOOLBAR_SORTS.SCORE, [UNASSIGNED_LABEL]);
+    expect(sections.length).toBe(0);
+  });
 });
 
 describe("toolbar project sorting", () => {

@@ -974,6 +974,10 @@ export default function App() {
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
   const [saveState, setSaveState] = useState({ status: "idle" });
+  const hasUnassignedTasks = useMemo(
+    () => tasks.some((task) => !(task.project?.trim())),
+    [tasks]
+  );
   useEffect(() => {
     setProjects((prev) => {
       const derived = collectProjects(
@@ -990,19 +994,22 @@ export default function App() {
   useEffect(() => {
     setMatrixFilters((prev) => {
       if (prev.includes(ALL_PROJECTS)) return DEFAULT_MATRIX_FILTERS;
-      const allowed = new Set(projects.concat([UNASSIGNED_LABEL]));
+      const allowed = new Set(projects);
+      if (hasUnassignedTasks) {
+        allowed.add(UNASSIGNED_LABEL);
+      }
       const next = prev.filter((value) => value === ALL_PROJECTS || allowed.has(value));
       return next.length ? next : DEFAULT_MATRIX_FILTERS;
     });
-  }, [projects]);
+  }, [projects, hasUnassignedTasks]);
 
   const matrixFilterOptions = useMemo(() => {
     const options = [ALL_PROJECTS, ...projects];
-    if (!projects.includes(UNASSIGNED_LABEL)) {
+    if (hasUnassignedTasks) {
       options.push(UNASSIGNED_LABEL);
     }
     return options;
-  }, [projects]);
+  }, [projects, hasUnassignedTasks]);
 
   const clearPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {

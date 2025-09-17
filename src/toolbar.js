@@ -109,7 +109,7 @@ export function projectSectionsFrom(
     }))
     .sort((a, b) => compareInsensitive(a.name, b.name));
 
-  if (allowUnassigned) {
+  if (allowUnassigned && unassigned.length > 0) {
     entries.push({
       name: UNASSIGNED_LABEL,
       projectKey: undefined,
