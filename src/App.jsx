@@ -12,6 +12,7 @@ import {
   FormLabel,
   Heading,
   HStack,
+  IconButton,
   Input,
   Modal,
   ModalBody,
@@ -22,18 +23,29 @@ import {
   ModalOverlay,
   NumberInput,
   NumberInputField,
+  Select,
   SimpleGrid,
   Spinner,
   Stack,
   Tag,
   Text,
   Textarea,
+  Tooltip,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
-import { parseJSONL, toJSONL } from "./jsonl.js";
+import { parseJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
+import {
+  addProject as addProjectHelper,
+  buildSnapshot,
+  collectProjects,
+  deleteProject as deleteProjectHelper,
+  hydrateRecords,
+  renameProject as renameProjectHelper,
+  compareInsensitive
+} from "./projects.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -53,6 +65,7 @@ function parseTags(value) {
 
 const MotionCircle = motion(Box);
 const MotionBadge = motion(Badge);
+const UNASSIGNED_LABEL = "Unassigned";
 
 function SaveStatusIndicator({ state }) {
   if (state.status === "saving") {
@@ -309,9 +322,57 @@ function MatrixQuadrant({
   );
 }
 
-function ProjectSection({ name, items, onEditTask, onToggleTask }) {
+function ProjectSection({
+  name,
+  projectKey,
+  items,
+  onEditTask,
+  onToggleTask,
+  onDropProject
+}) {
+  const allowDrop = Boolean(onDropProject);
+  const [isHover, setHover] = useState(false);
+
+  const handleDragOver = useCallback(
+    (event) => {
+      if (!allowDrop) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+      if (!isHover) setHover(true);
+    },
+    [allowDrop, isHover]
+  );
+
+  const handleDragLeave = useCallback(() => {
+    setHover(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event) => {
+      if (!allowDrop) return;
+      event.preventDefault();
+      setHover(false);
+      const raw = event.dataTransfer?.getData("text/plain");
+      if (!raw) return;
+      onDropProject?.(projectKey ?? undefined, raw);
+    },
+    [allowDrop, onDropProject, projectKey]
+  );
+
   return (
-    <Box borderWidth="1px" borderRadius="2xl" bg="white" boxShadow="md" p={5}>
+    <Box
+      borderWidth="1px"
+      borderRadius="2xl"
+      bg="white"
+      p={5}
+      boxShadow={allowDrop && isHover ? "xl" : "md"}
+      borderColor={allowDrop && isHover ? "purple.400" : "gray.100"}
+      borderStyle={allowDrop ? "dashed" : "solid"}
+      onDragOver={allowDrop ? handleDragOver : undefined}
+      onDragLeave={allowDrop ? handleDragLeave : undefined}
+      onDrop={allowDrop ? handleDrop : undefined}
+      transition="border-color 0.15s ease, box-shadow 0.15s ease"
+    >
       <Flex align="center" justify="space-between" mb={4}>
         <Heading size="sm">{name}</Heading>
         <Badge colorScheme="gray">{items.length}</Badge>
@@ -324,19 +385,20 @@ function ProjectSection({ name, items, onEditTask, onToggleTask }) {
               item={item}
               onEdit={onEditTask}
               onToggleDone={onToggleTask}
+              draggable={allowDrop}
             />
           ))}
         </Stack>
       ) : (
         <Text fontSize="sm" color="gray.400">
-          No tasks yet.
+          {projectKey ? `Drag tasks here to assign to ${name}.` : "Drag tasks here to keep tasks unassigned."}
         </Text>
       )}
     </Box>
   );
 }
 
-function TaskEditor({ task, isOpen, onCancel, onSave }) {
+function TaskEditor({ task, isOpen, onCancel, onSave, projects = [], onCreateProject }) {
   const [form, setForm] = useState(() => ({
     title: task?.title ?? "",
     project: task?.project ?? "",
@@ -346,9 +408,12 @@ function TaskEditor({ task, isOpen, onCancel, onSave }) {
     effort: task?.effort ?? "",
     tags: task?.tags ? task.tags.join(", ") : "",
     notes: task?.notes ?? "",
-    done: Boolean(task?.done)
+    done: Boolean(task?.done),
+    projectMode: task?.project ? "existing" : "none",
+    newProjectName: ""
   }));
   const [error, setError] = useState("");
+  const [projectError, setProjectError] = useState("");
   const titleRef = useRef(null);
 
   useEffect(() => {
@@ -361,13 +426,32 @@ function TaskEditor({ task, isOpen, onCancel, onSave }) {
       effort: task?.effort ?? "",
       tags: task?.tags ? task.tags.join(", ") : "",
       notes: task?.notes ?? "",
-      done: Boolean(task?.done)
+      done: Boolean(task?.done),
+      projectMode: task?.project ? "existing" : "none",
+      newProjectName: ""
     });
     setError("");
+    setProjectError("");
   }, [task]);
 
   const handleChange = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleProjectSelect = useCallback((value) => {
+    if (value === "__new__") {
+      setForm((prev) => ({ ...prev, projectMode: "new", project: "", newProjectName: "" }));
+    } else if (value) {
+      setForm((prev) => ({ ...prev, project: value, projectMode: "existing", newProjectName: "" }));
+    } else {
+      setForm((prev) => ({ ...prev, project: "", projectMode: "none", newProjectName: "" }));
+    }
+    setProjectError("");
+  }, []);
+
+  const handleNewProjectNameChange = useCallback((value) => {
+    setForm((prev) => ({ ...prev, newProjectName: value }));
+    setProjectError("");
   }, []);
 
   const handleSubmit = useCallback(
@@ -378,9 +462,22 @@ function TaskEditor({ task, isOpen, onCancel, onSave }) {
         setError("Title is required");
         return;
       }
+      let projectValue;
+      if (form.projectMode === "new") {
+        const result = onCreateProject?.(form.newProjectName ?? "");
+        if (!result || !result.ok) {
+          setProjectError(result?.message ?? "Project name is required");
+          return;
+        }
+        projectValue = result.name;
+      } else if (form.projectMode === "existing") {
+        projectValue = form.project || undefined;
+      } else {
+        projectValue = undefined;
+      }
       const changes = {
         title,
-        project: form.project.trim() || undefined,
+        project: projectValue,
         due: form.due.trim() || undefined,
         importance: sanitizeNumber(form.importance),
         urgency: sanitizeNumber(form.urgency),
@@ -407,17 +504,36 @@ function TaskEditor({ task, isOpen, onCancel, onSave }) {
               <Input
                 ref={titleRef}
                 value={form.title}
-                onChange={(event) => handleChange("title", event.target.value)}
-              />
-              {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
-            </FormControl>
+        onChange={(event) => handleChange("title", event.target.value)}
+      />
+      {error ? <FormErrorMessage>{error}</FormErrorMessage> : null}
+    </FormControl>
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              <FormControl>
+              <FormControl isInvalid={Boolean(projectError)}>
                 <FormLabel>Project</FormLabel>
-                <Input
-                  value={form.project}
-                  onChange={(event) => handleChange("project", event.target.value)}
-                />
+                <Select
+                  value={
+                    form.projectMode === "new" ? "__new__" : form.project || ""
+                  }
+                  onChange={(event) => handleProjectSelect(event.target.value)}
+                >
+                  <option value="">No project</option>
+                  {projects.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                  <option value="__new__">Create new project…</option>
+                </Select>
+                {form.projectMode === "new" ? (
+                  <Input
+                    mt={2}
+                    placeholder="New project name"
+                    value={form.newProjectName}
+                    onChange={(event) => handleNewProjectNameChange(event.target.value)}
+                  />
+                ) : null}
+                {projectError ? <FormErrorMessage>{projectError}</FormErrorMessage> : null}
               </FormControl>
               <FormControl>
                 <FormLabel>Due date</FormLabel>
@@ -498,14 +614,204 @@ function TaskEditor({ task, isOpen, onCancel, onSave }) {
   );
 }
 
+function ProjectManagerModal({
+  isOpen,
+  onClose,
+  projects,
+  usage,
+  onAdd,
+  onRename,
+  onDelete
+}) {
+  const [newName, setNewName] = useState("");
+  const [addError, setAddError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setNewName("");
+      setAddError("");
+    }
+  }, [isOpen]);
+
+  const handleAdd = useCallback(() => {
+    const result = onAdd(newName);
+    if (!result.ok) {
+      setAddError(result.message ?? "Unable to add project");
+      return;
+    }
+    setNewName("");
+    setAddError("");
+  }, [newName, onAdd]);
+
+  const handleRename = useCallback(
+    (name, nextValue) => onRename(name, nextValue),
+    [onRename]
+  );
+
+  const handleDelete = useCallback(
+    (name) => {
+      const count = usage[name] ?? 0;
+      const confirmed = window.confirm(
+        count
+          ? `Delete project "${name}" and unassign ${count} linked task${count === 1 ? "" : "s"}?`
+          : `Delete project "${name}"?`
+      );
+      if (!confirmed) return;
+      onDelete(name);
+    },
+    [onDelete, usage]
+  );
+
+  const handleKeyPress = useCallback(
+    (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleAdd();
+      }
+    },
+    [handleAdd]
+  );
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Manage projects</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <Stack spacing={6}>
+            <FormControl isInvalid={Boolean(addError)}>
+              <FormLabel>Add project</FormLabel>
+              <HStack align="center" spacing={3}>
+                <Input
+                  placeholder="Project name"
+                  value={newName}
+                  onChange={(event) => {
+                    setNewName(event.target.value);
+                    setAddError("");
+                  }}
+                  onKeyDown={handleKeyPress}
+                />
+                <Button colorScheme="blue" onClick={handleAdd}>
+                  Add
+                </Button>
+              </HStack>
+              {addError ? <FormErrorMessage>{addError}</FormErrorMessage> : null}
+            </FormControl>
+            <Stack spacing={4}>
+              {projects.length ? (
+                projects.map((name) => (
+                  <ProjectListItem
+                    key={name}
+                    name={name}
+                    count={usage[name] ?? 0}
+                    onRename={handleRename}
+                    onDelete={handleDelete}
+                  />
+                ))
+              ) : (
+                <Text fontSize="sm" color="gray.500">
+                  No projects yet.
+                </Text>
+              )}
+            </Stack>
+          </Stack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+}
+
+function ProjectListItem({ name, count, onRename, onDelete }) {
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setValue(name);
+    setError("");
+  }, [name]);
+
+  const handleRename = useCallback(() => {
+    const result = onRename(name, value);
+    if (!result.ok) {
+      setError(result.message ?? "Unable to rename project");
+      setValue(name);
+    } else {
+      setValue(result.name ?? value);
+      setError("");
+    }
+  }, [name, onRename, value]);
+
+  return (
+    <Stack spacing={1} key={name}>
+      <HStack align="flex-start" spacing={3}>
+        <Box flex="1">
+          <Input
+            size="sm"
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setError("");
+            }}
+          />
+        </Box>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleRename}
+          isDisabled={value.trim() === name.trim()}
+        >
+          Rename
+        </Button>
+        <Tooltip label="Delete project" placement="top">
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label={`Delete project ${name}`}
+            icon={<DeleteIcon />}
+            onClick={() => onDelete(name)}
+          />
+        </Tooltip>
+      </HStack>
+      <Text fontSize="xs" color="gray.500">
+        {count ? `${count.toLocaleString()} task${count === 1 ? "" : "s"}` : "No tasks yet"}
+      </Text>
+      {error ? (
+        <Text fontSize="xs" color="red.500">
+          {error}
+        </Text>
+      ) : null}
+    </Stack>
+  );
+}
+
 export default function App() {
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
+  const projectManagerDisclosure = useDisclosure();
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
   const [saveState, setSaveState] = useState({ status: "idle" });
+  useEffect(() => {
+    setProjects((prev) => {
+      const derived = collectProjects(
+        tasks,
+        prev.map((name) => ({ type: "project", name }))
+      );
+      if (derived.length === prev.length && derived.every((name, idx) => name === prev[idx])) {
+        return prev;
+      }
+      return derived;
+    });
+  }, [tasks]);
 
   const clearPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {
@@ -577,25 +883,16 @@ export default function App() {
     return groups;
   }, [tasks]);
 
-  const projects = useMemo(() => {
+  const projectGroups = useMemo(() => {
     const map = new Map();
-
-    tasks.forEach((task, index) => {
-      const key = task.project?.trim() || "No project";
-      if (!map.has(key)) {
-        map.set(key, []);
-      }
-      map.get(key).push({ task, index });
+    projects.forEach((name) => {
+      map.set(name, []);
     });
 
-    const sortByName = (a, b) => {
-      if (a === "No project") return 1;
-      if (b === "No project") return -1;
-      return a.localeCompare(b, undefined, { sensitivity: "base" });
-    };
+    const unassigned = [];
 
-    const sortTasks = (items) => {
-      return items.slice().sort((a, b) => {
+    const sortItems = (items) =>
+      items.slice().sort((a, b) => {
         if (a.task.done !== b.task.done) {
           return a.task.done ? 1 : -1;
         }
@@ -603,20 +900,51 @@ export default function App() {
         if (scoreDiff !== 0) return scoreDiff;
         return a.task.title.localeCompare(b.task.title);
       });
-    };
 
-    return Array.from(map.entries())
-      .sort(([a], [b]) => sortByName(a, b))
-      .map(([name, items]) => ({ name, items: sortTasks(items) }));
+    tasks.forEach((task, index) => {
+      const entry = { task, index };
+      const key = task.project?.trim();
+      if (key) {
+        if (!map.has(key)) {
+          map.set(key, [entry]);
+        } else {
+          map.get(key).push(entry);
+        }
+      } else {
+        unassigned.push(entry);
+      }
+    });
+
+    const entries = Array.from(map.entries())
+      .map(([name, items]) => ({ name, projectKey: name, items: sortItems(items) }))
+      .sort((a, b) => compareInsensitive(a.name, b.name));
+
+    entries.push({
+      name: UNASSIGNED_LABEL,
+      projectKey: undefined,
+      items: sortItems(unassigned)
+    });
+
+    return entries;
+  }, [tasks, projects]);
+
+  const projectUsage = useMemo(() => {
+    const counts = {};
+    tasks.forEach((task) => {
+      const name = task.project?.trim();
+      if (!name) return;
+      counts[name] = (counts[name] ?? 0) + 1;
+    });
+    return counts;
   }, [tasks]);
 
   useEffect(() => {
-    const snapshot = toJSONL(tasks);
+    const snapshot = buildSnapshot(tasks, projects);
     const handle = fileHandleRef.current;
 
     if (!handle) {
       clearPendingSave();
-      if (tasks.length) {
+      if (tasks.length || projects.length) {
         setSaveState({ status: "unsynced" });
       } else {
         setSaveState({ status: "idle" });
@@ -653,7 +981,7 @@ export default function App() {
         saveTimeoutRef.current = null;
       }
     };
-  }, [tasks, writeToHandle, clearPendingSave]);
+  }, [tasks, projects, buildSnapshot, writeToHandle, clearPendingSave]);
 
   const updateTask = useCallback((index, mutator) => {
     setTasks((prev) => {
@@ -676,6 +1004,50 @@ export default function App() {
       return next;
     });
   }, []);
+
+  const addProject = useCallback(
+    (name) => {
+      const result = addProjectHelper(projects, name);
+      if (result.ok) {
+        setProjects(result.projects);
+      }
+      return result;
+    },
+    [projects]
+  );
+
+  const renameProject = useCallback(
+    (oldName, newName) => {
+      const result = renameProjectHelper(projects, tasks, oldName, newName);
+      if (result.ok) {
+        setProjects(result.projects);
+        if (result.tasks !== tasks) {
+          setTasks(result.tasks);
+        }
+      }
+      return result;
+    },
+    [projects, tasks]
+  );
+
+  const deleteProject = useCallback(
+    (name) => {
+      const result = deleteProjectHelper(projects, tasks, name);
+      if (result.ok) {
+        setProjects(result.projects);
+        if (result.tasks !== tasks) {
+          setTasks(result.tasks);
+        }
+      }
+      return result;
+    },
+    [projects, tasks]
+  );
+
+  const handleInlineProjectCreate = useCallback(
+    (name) => addProject(name),
+    [addProject]
+  );
 
   const handleOpenEditor = useCallback(
     (index) => {
@@ -726,6 +1098,20 @@ export default function App() {
     [updateTask]
   );
 
+  const handleProjectDrop = useCallback(
+    (projectName, rawIndex) => {
+      const index = Number.parseInt(rawIndex, 10);
+      if (Number.isNaN(index)) return;
+      updateTask(index, (draft) => {
+        const target = projectName ?? undefined;
+        const current = draft.project ?? undefined;
+        if (current === target) return false;
+        return { project: target };
+      });
+    },
+    [updateTask]
+  );
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -745,10 +1131,12 @@ export default function App() {
     const res = await fetch("/tasks.sample.jsonl");
     const text = await res.text();
     const parsed = parseJSONL(text);
+    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
     fileHandleRef.current = null;
-    lastSavedRef.current = toJSONL(parsed);
-    setTasks(parsed);
-    setSaveState({ status: parsed.length ? "unsynced" : "idle" });
+    lastSavedRef.current = buildSnapshot(taskRecords, projectList);
+    setProjects(projectList);
+    setTasks(taskRecords);
+    setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
   }, []);
 
   const handleOpenFile = useCallback(async () => {
@@ -763,8 +1151,10 @@ export default function App() {
     const file = await handle.getFile();
     const text = await file.text();
     const parsed = parseJSONL(text);
-    lastSavedRef.current = toJSONL(parsed);
-    setTasks(parsed);
+    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
+    lastSavedRef.current = buildSnapshot(taskRecords, projectList);
+    setProjects(projectList);
+    setTasks(taskRecords);
     setSaveState({ status: "saved", timestamp: Date.now() });
   }, []);
 
@@ -772,7 +1162,7 @@ export default function App() {
     const handle = await ensureHandleForSave();
     if (!handle) return;
     clearPendingSave();
-    const snapshot = toJSONL(tasks);
+    const snapshot = buildSnapshot(tasks, projects);
     setSaveState({ status: "saving" });
     try {
       await writeToHandle(handle, snapshot);
@@ -783,7 +1173,7 @@ export default function App() {
       console.error(error);
       setSaveState({ status: "error", error });
     }
-  }, [tasks, ensureHandleForSave, clearPendingSave, writeToHandle]);
+  }, [tasks, projects, ensureHandleForSave, clearPendingSave, writeToHandle, buildSnapshot]);
 
   const editingTask = editingIndex != null ? tasks[editingIndex] : null;
 
@@ -802,6 +1192,9 @@ export default function App() {
           <Flex ml={{ md: "auto" }} align="center" gap={4}>
             <SaveStatusIndicator state={saveState} />
             <ButtonGroup spacing={3}>
+              <Button variant="outline" onClick={projectManagerDisclosure.onOpen}>
+                Manage projects
+              </Button>
               <Button variant="ghost" onClick={handleLoadSample}>
                 Load sample
               </Button>
@@ -877,32 +1270,39 @@ export default function App() {
                 removing them from these lists.
               </Text>
             </Stack>
-            {projects.length ? (
-              <Stack spacing={5}>
-                {projects.map(({ name, items }) => (
-                  <ProjectSection
-                    key={name}
-                    name={name}
-                    items={items}
-                    onEditTask={handleOpenEditor}
-                    onToggleTask={handleToggleDone}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Text fontSize="sm" color="gray.400">
-                No tasks loaded yet. Import or add work to get started.
-              </Text>
-            )}
+            <Stack spacing={5}>
+              {projectGroups.map(({ name, projectKey, items }) => (
+                <ProjectSection
+                  key={projectKey ?? "__unassigned"}
+                  name={name}
+                  projectKey={projectKey}
+                  items={items}
+                  onEditTask={handleOpenEditor}
+                  onToggleTask={handleToggleDone}
+                  onDropProject={handleProjectDrop}
+                />
+              ))}
+            </Stack>
           </Box>
         </Stack>
       </Stack>
+      <ProjectManagerModal
+        isOpen={projectManagerDisclosure.isOpen}
+        onClose={projectManagerDisclosure.onClose}
+        projects={projects}
+        usage={projectUsage}
+        onAdd={addProject}
+        onRename={renameProject}
+        onDelete={deleteProject}
+      />
       {editingTask ? (
         <TaskEditor
           task={editingTask}
           isOpen={disclosure.isOpen}
           onCancel={handleCancelEdit}
           onSave={handleSaveEdit}
+          projects={projects}
+          onCreateProject={handleInlineProjectCreate}
         />
       ) : null}
     </Container>
