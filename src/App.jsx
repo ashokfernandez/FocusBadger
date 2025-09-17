@@ -1291,7 +1291,7 @@ export default function App() {
             </Stack>
             <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} spacing={6}>
               <MatrixQuadrant
-                title="Today"
+                title="Why aren't you doing this now?"
                 subtitle="Urgent and important"
                 colorScheme="red"
                 items={matrix.today}
@@ -1301,7 +1301,7 @@ export default function App() {
                 quadrantKey="today"
               />
               <MatrixQuadrant
-                title="Schedule"
+                title="When can you do this later?"
                 subtitle="Important, not urgent"
                 colorScheme="purple"
                 items={matrix.schedule}
@@ -1312,7 +1312,7 @@ export default function App() {
                 quadrantKey="schedule"
               />
               <MatrixQuadrant
-                title="Delegate"
+                title="Who can help you with this?"
                 subtitle="Urgent, not important"
                 colorScheme="orange"
                 items={matrix.delegate}
