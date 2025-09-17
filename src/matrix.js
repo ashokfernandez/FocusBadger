@@ -8,6 +8,8 @@ export const MATRIX_SORTS = {
   LOW_EFFORT: "low-effort"
 };
 
+export const LOW_EFFORT_MOOD_THRESHOLD = 3;
+
 export function normalizeProjectFilterKey(task) {
   const name = task?.project;
   if (typeof name !== "string") return UNASSIGNED_LABEL;
@@ -59,4 +61,45 @@ export function classifyTaskPriority(task, now = new Date()) {
     urgencyLabel: isUrgent ? "Urgent" : "Can wait",
     importanceLabel: isImportant ? "Important" : "Low priority"
   };
+}
+
+export function getTaskMoodHighlight(task, highlightMode, { priority, now } = {}) {
+  if (!highlightMode) {
+    return { isPriorityHighlight: false, isLowEffortHighlight: false };
+  }
+
+  const resolvedPriority = priority ?? classifyTaskPriority(task, now);
+  const isDone = Boolean(task?.done);
+  const effort = task?.effort;
+  const hasEffort = Number.isFinite(effort);
+
+  const isPriorityHighlight =
+    highlightMode === MATRIX_SORTS.SCORE && resolvedPriority.isUrgent && resolvedPriority.isImportant && !isDone;
+  const isLowEffortHighlight =
+    highlightMode === MATRIX_SORTS.LOW_EFFORT && hasEffort && effort <= LOW_EFFORT_MOOD_THRESHOLD && !isDone;
+
+  return { isPriorityHighlight, isLowEffortHighlight };
+}
+
+export function getProjectMoodHighlight(items = [], highlightMode, { now } = {}) {
+  if (!highlightMode || !Array.isArray(items) || items.length === 0) {
+    return { hasPriorityHighlight: false, hasLowEffortHighlight: false };
+  }
+
+  return items.reduce(
+    (acc, item) => {
+      const entry = item ?? {};
+      const task = entry.task ?? entry;
+      if (!task) return acc;
+      const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, {
+        priority: entry.priority,
+        now
+      });
+      return {
+        hasPriorityHighlight: acc.hasPriorityHighlight || isPriorityHighlight,
+        hasLowEffortHighlight: acc.hasLowEffortHighlight || isLowEffortHighlight
+      };
+    },
+    { hasPriorityHighlight: false, hasLowEffortHighlight: false }
+  );
 }

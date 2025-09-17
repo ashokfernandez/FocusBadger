@@ -12,7 +12,7 @@ import {
 import { CheckIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
 import EffortSlider from "../EffortSlider.jsx";
-import { MATRIX_SORTS, classifyTaskPriority } from "../matrix.js";
+import { MATRIX_SORTS, classifyTaskPriority, getTaskMoodHighlight } from "../matrix.js";
 
 const MotionCircle = motion(Box);
 
@@ -35,14 +35,10 @@ export default function TaskCard({
   const [titleError, setTitleError] = useState("");
   const [isEditingTitle, setEditingTitle] = useState(false);
   const canRenameTitle = useMemo(() => Boolean(onRenameTitle), [onRenameTitle]);
-  const hasEffort = task.effort != null;
   const projectLabel = task.project?.trim();
   const hasProject = Boolean(projectLabel);
   const hasDueDate = Boolean(task.due);
-  const isPriorityHighlight =
-    highlightMode === MATRIX_SORTS.SCORE && priority.isUrgent && priority.isImportant && !task.done;
-  const isLowEffortHighlight =
-    highlightMode === MATRIX_SORTS.LOW_EFFORT && hasEffort && task.effort <= 3 && !task.done;
+  const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(task, highlightMode, { priority });
   const highlightBorderColor = isPriorityHighlight
     ? "purple.400"
     : isLowEffortHighlight

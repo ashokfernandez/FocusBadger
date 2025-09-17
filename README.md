@@ -144,6 +144,13 @@ Pull requests
 - Saving from the modal overwrites the linked `tasks.jsonl` when the File System Access API is available, or leaves the UI in an “unsynced” state when running on GitHub Pages.
 - Hosted builds ship with `/tasks.json`, so visitors can try the board online without a local file handle.
 
+### Mood selector
+
+- A "Mood" toggle lives alongside the Priority/Projects tabs so you can pick between **Top priority** and **Low effort first**.
+- The selection highlights tasks across both tabs: urgent/important items glow in the priority matrix while quick wins get a green tint in project lists.
+- Project cards inherit the same mood so entire sections pulse purple for top priorities or tint green for easy wins, making hot spots obvious even in the project view.
+- The control is mobile-friendly, stacking under the tabs on small screens and staying pinned to the right on larger layouts.
+
 ### GitHub Pages
 
 - `.github/workflows/deploy.yml` builds on pushes to `main` and publishes the site via GitHub Pages.
