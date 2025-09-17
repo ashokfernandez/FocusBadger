@@ -177,9 +177,9 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
   - [x] Project filter built from data plus All <!-- TASK:ui-filter-project --> (PR #8)
   - [x] Sort selector: Score, Due date, Title <!-- TASK:ui-sort --> (PR #8)
 
-- [ ] Add task modal <!-- TASK:ui-add -->
-  - [ ] Validate title and optional fields <!-- TASK:ui-add-validate -->
-  - [ ] Generate `id` and timestamps <!-- TASK:ui-add-id -->
+- [x] Add task modal <!-- TASK:ui-add --> (PR #10)
+  - [x] Validate title and optional fields <!-- TASK:ui-add-validate --> (PR #10)
+  - [x] Generate `id` and timestamps <!-- TASK:ui-add-id --> (PR #10)
 
 ### Summaries and exports
 
