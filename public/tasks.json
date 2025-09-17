@@ -1,0 +1,10 @@
+[
+  { "type": "project", "name": "Product" },
+  { "type": "project", "name": "Marketing" },
+  { "title": "Ship onboarding checklist", "project": "Product", "importance": 4, "urgency": 3, "effort": 3, "notes": "Walk new users through the first aha moment", "tags": ["onboarding", "milestone"] },
+  { "title": "Plan launch blog post", "project": "Marketing", "importance": 3, "urgency": 2, "effort": 2, "tags": ["launch", "content"], "due": "2024-11-01" },
+  { "title": "Draft release email", "project": "Marketing", "importance": 2, "urgency": 2, "effort": 1 },
+  { "title": "Follow up with beta testers", "project": "Product", "importance": 3, "urgency": 4, "effort": 2, "due": "2024-10-28" },
+  { "title": "Reach out to podcasts", "project": "Marketing", "importance": 2, "urgency": 1, "effort": 3 },
+  { "title": "QA responsive layout", "project": "Product", "importance": 3, "urgency": 3, "effort": 2 }
+]

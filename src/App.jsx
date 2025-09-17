@@ -31,17 +31,22 @@ import {
   SimpleGrid,
   Spinner,
   Stack,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Tag,
   Text,
   Textarea,
   Tooltip,
   Wrap,
   WrapItem,
+  useClipboard,
   useDisclosure
 } from "@chakra-ui/react";
-import { CheckIcon, CheckCircleIcon, ChevronDownIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
+import { CheckIcon, CheckCircleIcon, ChevronDownIcon, CopyIcon, DeleteIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { motion } from "framer-motion";
-import { parseJSONL } from "./jsonl.js";
 import { bucket, score } from "./model.js";
 import {
   addProject as addProjectHelper,
@@ -61,6 +66,7 @@ import {
 import EffortSlider from "./EffortSlider.jsx";
 import { HEADER_LAYOUT, MATRIX_GRID_COLUMNS } from "./layout.js";
 import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
+import { buildJSONExport, parseJSONInput } from "./jsonEditor.js";
 
 function sanitizeNumber(value) {
   const trimmed = String(value ?? "").trim();
@@ -968,13 +974,22 @@ export default function App() {
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
+  const jsonModal = useDisclosure();
   const lastSavedRef = useRef("");
   const saveTimeoutRef = useRef(null);
   const [saveState, setSaveState] = useState({ status: "idle" });
+  const [jsonTabIndex, setJsonTabIndex] = useState(0);
+  const [jsonInputValue, setJsonInputValue] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [jsonParsed, setJsonParsed] = useState(null);
+  const [isJsonSaving, setIsJsonSaving] = useState(false);
   const hasUnassignedTasks = useMemo(
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
   );
+  const jsonExportText = useMemo(() => buildJSONExport(tasks, projects), [tasks, projects]);
+  const clipboard = useClipboard(jsonExportText);
+  const canSaveJson = jsonTabIndex === 1 && jsonParsed?.ok && !jsonError;
   useEffect(() => {
     setProjects((prev) => {
       const derived = collectProjects(
@@ -987,6 +1002,19 @@ export default function App() {
       return derived;
     });
   }, [tasks]);
+
+  useEffect(() => {
+    if (!jsonModal.isOpen) return;
+    setJsonInputValue(jsonExportText);
+    const initial = parseJSONInput(jsonExportText);
+    if (initial.ok) {
+      setJsonParsed(initial);
+      setJsonError("");
+    } else {
+      setJsonParsed(null);
+      setJsonError(initial.error ?? "");
+    }
+  }, [jsonModal.isOpen, jsonExportText]);
 
   useEffect(() => {
     setMatrixFilters((prev) => {
@@ -1297,6 +1325,77 @@ export default function App() {
     setProjectSortMode((prev) => (prev === value ? prev : value));
   }, []);
 
+  const openJsonExport = useCallback(() => {
+    setJsonTabIndex(0);
+    jsonModal.onOpen();
+  }, [jsonModal]);
+
+  const openJsonImport = useCallback(() => {
+    setJsonTabIndex(1);
+    jsonModal.onOpen();
+  }, [jsonModal]);
+
+  const handleJsonTabChange = useCallback(
+    (index) => {
+      setJsonTabIndex(index);
+      if (index !== 1) {
+        setJsonError("");
+        return;
+      }
+      const result = parseJSONInput(jsonInputValue);
+      if (result.ok) {
+        setJsonParsed(result);
+        setJsonError("");
+      } else {
+        setJsonParsed(null);
+        setJsonError(result.error ?? "");
+      }
+    },
+    [jsonInputValue]
+  );
+
+  const handleJsonInputChange = useCallback((event) => {
+    const { value } = event.target;
+    setJsonInputValue(value);
+    const result = parseJSONInput(value);
+    if (result.ok) {
+      setJsonParsed(result);
+      setJsonError("");
+    } else {
+      setJsonParsed(null);
+      setJsonError(result.error ?? "");
+    }
+  }, []);
+
+  const handleJsonSave = useCallback(async () => {
+    if (!jsonParsed?.ok) return;
+    setIsJsonSaving(true);
+    const nextTasks = jsonParsed.tasks;
+    const nextProjects = jsonParsed.projects;
+    const snapshot = buildSnapshot(nextTasks, nextProjects);
+    try {
+      setTasks(nextTasks);
+      setProjects(nextProjects);
+      clearPendingSave();
+      const handle = await ensureHandleForSave();
+      if (handle) {
+        setSaveState({ status: "saving" });
+        await writeToHandle(handle, snapshot);
+        lastSavedRef.current = snapshot;
+        setSaveState({ status: "saved", timestamp: Date.now() });
+      } else {
+        lastSavedRef.current = snapshot;
+        setSaveState({ status: nextTasks.length || nextProjects.length ? "unsynced" : "idle" });
+      }
+      jsonModal.onClose();
+    } catch (error) {
+      console.error(error);
+      setSaveState({ status: "error", error });
+    } finally {
+      setIsJsonSaving(false);
+    }
+  }, [jsonParsed, buildSnapshot, clearPendingSave, ensureHandleForSave, jsonModal, writeToHandle]);
+
   const handleSaveEdit = useCallback(
     (changes) => {
       if (editingIndex == null) return;
@@ -1313,16 +1412,28 @@ export default function App() {
   }, [disclosure]);
 
   const handleLoadSample = useCallback(async () => {
-    const res = await fetch("/tasks.sample.jsonl");
-    const text = await res.text();
-    const parsed = parseJSONL(text);
-    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
-    fileHandleRef.current = null;
-    lastSavedRef.current = buildSnapshot(taskRecords, projectList);
-    setProjects(projectList);
-    setTasks(taskRecords);
-    setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
-  }, []);
+    const sources = ["/tasks.json", "/tasks.sample.jsonl"];
+    for (const path of sources) {
+      try {
+        const res = await fetch(path);
+        if (!res.ok) continue;
+        const text = await res.text();
+        const parsed = parseJSONInput(text);
+        if (!parsed.ok) continue;
+        const { tasks: taskRecords, projects: projectList } = parsed;
+        fileHandleRef.current = null;
+        const snapshot = buildSnapshot(taskRecords, projectList);
+        lastSavedRef.current = snapshot;
+        setProjects(projectList);
+        setTasks(taskRecords);
+        setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
+        return;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    alert("Unable to load sample tasks.json");
+  }, [buildSnapshot]);
 
   const handleOpenFile = useCallback(async () => {
     if (!window.showOpenFilePicker) {
@@ -1335,8 +1446,12 @@ export default function App() {
     fileHandleRef.current = handle;
     const file = await handle.getFile();
     const text = await file.text();
-    const parsed = parseJSONL(text);
-    const { tasks: taskRecords, projects: projectList } = hydrateRecords(parsed);
+    const parsed = parseJSONInput(text);
+    if (!parsed.ok) {
+      alert(parsed.error ?? "Unable to parse JSON");
+      return;
+    }
+    const { tasks: taskRecords, projects: projectList } = parsed;
     lastSavedRef.current = buildSnapshot(taskRecords, projectList);
     setProjects(projectList);
     setTasks(taskRecords);
@@ -1386,6 +1501,12 @@ export default function App() {
               </Button>
               <Button variant="ghost" onClick={handleLoadSample} {...HEADER_LAYOUT.button}>
                 Load sample
+              </Button>
+              <Button variant="outline" onClick={openJsonExport} {...HEADER_LAYOUT.button}>
+                Show JSON
+              </Button>
+              <Button variant="outline" onClick={openJsonImport} {...HEADER_LAYOUT.button}>
+                Paste JSON
               </Button>
               <Button onClick={handleOpenFile} {...HEADER_LAYOUT.button}>
                 Open tasks.jsonl
@@ -1520,6 +1641,90 @@ export default function App() {
           onCreateProject={handleInlineProjectCreate}
         />
       ) : null}
+      <Modal
+        isOpen={jsonModal.isOpen}
+        onClose={jsonModal.onClose}
+        size="4xl"
+        closeOnOverlayClick={!isJsonSaving}
+        closeOnEsc={!isJsonSaving}
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>JSON export &amp; import</ModalHeader>
+          <ModalCloseButton isDisabled={isJsonSaving} />
+          <ModalBody>
+            <Tabs index={jsonTabIndex} onChange={handleJsonTabChange} isLazy isFitted variant="enclosed">
+              <TabList>
+                <Tab>Show JSON</Tab>
+                <Tab>Update from JSON</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel px={0} pt={4} pb={2}>
+                  <Stack spacing={4} align="flex-start">
+                    <Button
+                      size="sm"
+                      variant={clipboard.hasCopied ? "solid" : "outline"}
+                      colorScheme={clipboard.hasCopied ? "green" : "purple"}
+                      leftIcon={<CopyIcon />}
+                      onClick={clipboard.onCopy}
+                    >
+                      {clipboard.hasCopied ? "Copied" : "Copy JSON"}
+                    </Button>
+                    <Box
+                      as="pre"
+                      w="full"
+                      maxH="420px"
+                      overflow="auto"
+                      fontFamily="mono"
+                      fontSize="sm"
+                      bg="gray.900"
+                      color="green.100"
+                      borderRadius="lg"
+                      px={4}
+                      py={4}
+                    >
+                      {jsonExportText}
+                    </Box>
+                  </Stack>
+                </TabPanel>
+                <TabPanel px={0} pt={4} pb={2}>
+                  <Stack spacing={4}>
+                    <FormControl isInvalid={Boolean(jsonError)}>
+                      <FormLabel>Paste updated JSON</FormLabel>
+                      <Textarea
+                        value={jsonInputValue}
+                        onChange={handleJsonInputChange}
+                        fontFamily="mono"
+                        fontSize="sm"
+                        minH="280px"
+                        placeholder="Paste JSON array or JSONL records"
+                      />
+                      {jsonError ? <FormErrorMessage>{jsonError}</FormErrorMessage> : null}
+                    </FormControl>
+                  </Stack>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing={3}>
+              <Button variant="ghost" onClick={jsonModal.onClose} isDisabled={isJsonSaving}>
+                Close
+              </Button>
+              {jsonTabIndex === 1 ? (
+                <Button
+                  colorScheme="blue"
+                  onClick={handleJsonSave}
+                  isDisabled={!canSaveJson || isJsonSaving}
+                  isLoading={isJsonSaving}
+                >
+                  Save JSON
+                </Button>
+              ) : null}
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Container>
   );
 }
