@@ -59,7 +59,8 @@ export default function AssistantWorkflowModal({
               <TabPanel px={0} pt={4} pb={2}>
                 <Box as="div">
                   <Text fontSize="sm" color={ASSISTANT_WORKFLOW_TEXT_COLOR} mb={4}>
-                    Share this payload with your LLM assistant. It includes projects first followed by tasks.
+                    Share this prompt package with your LLM assistant. It combines a short briefing with your data so the model
+                    understands what to do before editing projects and tasks.
                   </Text>
                   <Button
                     size="sm"

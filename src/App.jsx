@@ -82,8 +82,8 @@ export default function App() {
     () => tasks.some((task) => !(task.project?.trim())),
     [tasks]
   );
-  const jsonExportText = useMemo(() => buildJSONExport(tasks, projects), [tasks, projects]);
-  const clipboard = useClipboard(jsonExportText);
+  const jsonExport = useMemo(() => buildJSONExport(tasks, projects), [tasks, projects]);
+  const clipboard = useClipboard(jsonExport.clipboardText);
   const canSaveJson = jsonTabIndex === 1 && jsonParsed?.ok && !jsonError;
   useEffect(() => {
     setProjects((prev) => {
@@ -101,8 +101,8 @@ export default function App() {
   useEffect(() => {
     if (!jsonModal.isOpen) return;
     if (jsonTabIndex !== 0) return;
-    const initial = parseJSONInput(jsonExportText);
-    setJsonInputValue(jsonExportText);
+    const initial = parseJSONInput(jsonExport.data);
+    setJsonInputValue(jsonExport.data);
     if (initial.ok) {
       setJsonParsed(initial);
       setJsonError("");
@@ -110,7 +110,7 @@ export default function App() {
       setJsonParsed(null);
       setJsonError(initial.error ?? "");
     }
-  }, [jsonModal.isOpen, jsonExportText, jsonTabIndex]);
+  }, [jsonModal.isOpen, jsonExport, jsonTabIndex]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -547,8 +547,8 @@ export default function App() {
     (tab = 0) => {
       setJsonTabIndex(tab);
       if (tab === 0) {
-        const initial = parseJSONInput(jsonExportText);
-        setJsonInputValue(jsonExportText);
+        const initial = parseJSONInput(jsonExport.data);
+        setJsonInputValue(jsonExport.data);
         if (initial.ok) {
           setJsonParsed(initial);
           setJsonError("");
@@ -563,7 +563,7 @@ export default function App() {
       }
       jsonModal.onOpen();
     },
-    [jsonExportText, jsonModal]
+    [jsonExport, jsonModal]
   );
 
   const handleJsonTabChange = useCallback(
@@ -870,7 +870,7 @@ export default function App() {
         onClose={jsonModal.onClose}
         tabIndex={jsonTabIndex}
         onTabChange={handleJsonTabChange}
-        exportText={jsonExportText}
+        exportText={jsonExport.clipboardText}
         onCopyExport={clipboard.onCopy}
         hasCopiedExport={clipboard.hasCopied}
         inputValue={jsonInputValue}
