@@ -162,7 +162,7 @@ Codex can update this list by toggling boxes and appending PR links. Each line h
 - [x] Save to the same file handle using `toJSONL` with autosave indicator <!-- TASK:ui-save --> (commit 910dcd2)
 - [x] Manage project list (add/rename/delete) <!-- TASK:ui-projects --> (commit 7906360)
 - [x] Sample tasks file for quick demo <!-- TASK:ui-sample --> (commit ca1b3b7)
-- [x] JSON export/import modal <!-- TASK:ui-json -->
+- [x] JSON export/import modal <!-- TASK:ui-json --> (PR #9)
 
 ### Interactions
 
