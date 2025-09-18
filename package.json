@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
-    "update:favicons": "node scripts/generate-icons.mjs"
+    "update:favicons": "node scripts/generate-icons.mjs",
+    "prebuild": "npm run update:favicons"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.1.1",
