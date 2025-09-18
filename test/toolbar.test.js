@@ -31,6 +31,8 @@ describe("project sections", () => {
     const sections = projectSectionsFrom(tasks, projectList, TOOLBAR_SORTS.SCORE, [ALL_PROJECTS]);
     expect(sections.length).toBe(3);
     expect(sections.map((section) => section.name)).toEqual(["Alpha", "Beta", UNASSIGNED_LABEL]);
+    expect(sections[0].openItems.length).toBe(2);
+    expect(sections[0].closedItems.length).toBe(0);
   });
 
   it("includes only matching projects when filters are scoped", () => {
@@ -43,7 +45,7 @@ describe("project sections", () => {
     const sections = projectSectionsFrom(tasks, projectList, TOOLBAR_SORTS.TITLE, [UNASSIGNED_LABEL]);
     expect(sections.length).toBe(1);
     expect(sections[0].name).toBe(UNASSIGNED_LABEL);
-    expect(sections[0].items.map((entry) => entry.index)).toEqual([3]);
+    expect(sections[0].openItems.map((entry) => entry.index)).toEqual([3]);
   });
 
   it("omits unassigned section when there are no unassigned tasks", () => {
@@ -56,6 +58,16 @@ describe("project sections", () => {
     const assignedOnly = tasks.slice(0, 3);
     const sections = projectSectionsFrom(assignedOnly, projectList, TOOLBAR_SORTS.SCORE, [UNASSIGNED_LABEL]);
     expect(sections.length).toBe(0);
+  });
+
+  it("separates closed tasks into dedicated buckets", () => {
+    const closedTask = { title: "Done", project: "Alpha", done: true };
+    const sections = projectSectionsFrom([...tasks, closedTask], projectList, TOOLBAR_SORTS.SCORE, [ALL_PROJECTS]);
+    const alpha = sections.find((section) => section.name === "Alpha");
+    expect(alpha.openItems.some((entry) => entry.task.title === "Done")).toBe(false);
+    const closedTitles = alpha.closedItems.map((entry) => entry.task.title);
+    expect(closedTitles.includes("Done")).toBe(true);
+    expect(alpha.allItems.length).toBe(3);
   });
 });
 

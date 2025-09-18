@@ -69,6 +69,28 @@ export function sortProjectItems(items = [], sortMode = TOOLBAR_SORTS.SCORE) {
   return items.slice().sort((a, b) => compareProjectItems(a, b, sortMode));
 }
 
+function buildSectionPayload(name, projectKey, items = [], sortMode) {
+  const sorted = sortProjectItems(items, sortMode);
+  const openItems = [];
+  const closedItems = [];
+
+  sorted.forEach((entry) => {
+    if (entry?.task?.done) {
+      closedItems.push(entry);
+    } else {
+      openItems.push(entry);
+    }
+  });
+
+  return {
+    name,
+    projectKey,
+    openItems,
+    closedItems,
+    allItems: sorted
+  };
+}
+
 export function projectSectionsFrom(
   tasks = [],
   projects = [],
@@ -102,19 +124,13 @@ export function projectSectionsFrom(
 
   const entries = Array.from(map.entries())
     .filter(([name]) => allowAll || active.includes(name))
-    .map(([name, items]) => ({
-      name,
-      projectKey: name,
-      items: sortProjectItems(items, sortMode)
-    }))
+    .map(([name, items]) => buildSectionPayload(name, name, items, sortMode))
     .sort((a, b) => compareInsensitive(a.name, b.name));
 
   if (allowUnassigned && unassigned.length > 0) {
-    entries.push({
-      name: UNASSIGNED_LABEL,
-      projectKey: undefined,
-      items: sortProjectItems(unassigned, sortMode)
-    });
+    entries.push(
+      buildSectionPayload(UNASSIGNED_LABEL, undefined, unassigned, sortMode)
+    );
   }
 
   return entries;

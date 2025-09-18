@@ -1,6 +1,6 @@
 import { parseJSONL } from "./jsonl.js";
 import { hydrateRecords } from "./projects.js";
-import assistantTemplate from "./prompts/assistant-template.js";
+import assistantPromptTemplate from "./prompts/assistantPrompt.js";
 
 const PROMPT_CONTEXT = [
   "FocusBadger is a local-first planning board that stores every project and task in a JSON Lines file.",
@@ -31,16 +31,19 @@ function fillPromptTemplate(template, values) {
 
 export function buildJSONExport(tasks = [], projects = []) {
   const projectRecords = projects.map((name) => ({ type: "project", name }));
-  const records = [...projectRecords, ...tasks];
-  const data = JSON.stringify(records, null, 2);
-  const clipboardText = fillPromptTemplate(assistantTemplate, {
+  const allRecords = [...projectRecords, ...tasks];
+  const openTasks = tasks.filter((task) => !task?.done);
+  const openRecords = [...projectRecords, ...openTasks];
+  const data = JSON.stringify(allRecords, null, 2);
+  const clipboardData = JSON.stringify(openRecords, null, 2);
+  const clipboardText = fillPromptTemplate(assistantPromptTemplate, {
     context: PROMPT_CONTEXT,
     goals: PROMPT_GOALS,
     expectedOutput: PROMPT_EXPECTED_OUTPUT,
-    data
+    data: clipboardData
   });
 
-  return { data, clipboardText };
+  return { data, clipboardText, clipboardData };
 }
 
 function ensureObject(value) {

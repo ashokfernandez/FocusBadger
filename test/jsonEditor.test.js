@@ -10,8 +10,23 @@ describe("buildJSONExport", () => {
     const parsed = JSON.parse(output.data);
     expect(parsed[0]).toEqual({ type: "project", name: "Alpha" });
     expect(parsed[1]).toEqual({ title: "Task" });
-    expect(output.clipboardText.includes("Task data (projects first, then tasks):")).toBe(true);
-    expect(output.clipboardText.includes(output.data)).toBe(true);
+    expect(output.clipboardText.includes("# FocusBadger Assistant Briefing")).toBe(true);
+    expect(output.clipboardData.includes("\"Task\"")).toBe(true);
+  });
+
+  it("omits completed tasks from clipboard data", () => {
+    const output = buildJSONExport(
+      [
+        { title: "Open", done: false },
+        { title: "Closed", done: true }
+      ],
+      []
+    );
+    expect(JSON.parse(output.data).length).toBe(2);
+    const clipboardRecords = JSON.parse(output.clipboardData);
+    expect(clipboardRecords.length).toBe(1);
+    expect(clipboardRecords[0]).toEqual({ title: "Open", done: false });
+    expect(output.clipboardText.includes("Closed")).toBe(false);
   });
 });
 

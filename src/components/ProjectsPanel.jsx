@@ -32,12 +32,20 @@ export default function ProjectsPanel({
       </Flex>
       {projectGroups.length ? (
         <Stack spacing={PROJECT_PANEL_STACK_SPACING}>
-          {projectGroups.map(({ name, projectKey, items }) => (
+          {projectGroups.map(({
+            name,
+            projectKey,
+            openItems,
+            closedItems,
+            allItems
+          }) => (
             <ProjectSection
               key={projectKey ?? "__unassigned"}
               name={name}
               projectKey={projectKey}
-              items={items}
+              openItems={openItems}
+              closedItems={closedItems}
+              allItems={allItems}
               onRenameProject={onRenameProject}
               onRenameTask={onRenameTask}
               onEditTask={onEditTask}
