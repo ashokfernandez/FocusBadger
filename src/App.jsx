@@ -679,35 +679,57 @@ export default function App() {
   );
 
   const handleLoadSample = useCallback(async () => {
-    const sources = ["/tasks.json", "/tasks.sample.jsonl"];
-    for (const path of sources) {
-      try {
-        const res = await fetch(path);
-        if (!res.ok) continue;
-        const text = await res.text();
-        const parsed = parseJSONInput(text);
-        if (!parsed.ok) continue;
-        const { tasks: taskRecords, projects: projectList } = parsed;
-        fileHandleRef.current = null;
-        setActiveFileName("");
-        const snapshot = buildSnapshot(taskRecords, projectList);
-        if (isLocalStorageMode) {
+    const resolveSampleUrl = (path) => {
+      const baseValue = import.meta.env.BASE_URL ?? "/";
+      let normalizedBase = baseValue || "/";
+      if (!normalizedBase.startsWith("/")) {
+        normalizedBase = `/${normalizedBase}`;
+      }
+      if (!normalizedBase.endsWith("/")) {
+        normalizedBase = `${normalizedBase}/`;
+      }
+      const trimmedPath = path.replace(/^\/+/u, "");
+      return `${normalizedBase}${trimmedPath}`;
+    };
+
+    const sources = ["tasks.json", "tasks.sample.jsonl"]; // attempt canonical names first
+
+    for (const source of sources) {
+      const candidateUrls = [resolveSampleUrl(source)];
+      const rawWithSlash = source.startsWith("/") ? source : `/${source}`;
+      candidateUrls.push(rawWithSlash);
+      candidateUrls.push(source);
+
+      for (const url of candidateUrls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          const text = await res.text();
+          const parsed = parseJSONInput(text);
+          if (!parsed.ok) continue;
+          const { tasks: taskRecords, projects: projectList } = parsed;
+
+          hasLoadedStoredSnapshotRef.current = true;
+          fileHandleRef.current = null;
+          setActiveFileName("");
+          setStorageMode(STORAGE_MODE_LOCAL);
+
+          const snapshot = buildSnapshot(taskRecords, projectList);
           lastSavedRef.current = "";
           setSaveState({ status: taskRecords.length || projectList.length ? "saving" : "idle" });
-        } else {
-          lastSavedRef.current = snapshot;
-          setSaveState({ status: taskRecords.length || projectList.length ? "unsynced" : "idle" });
+
+          setProjects(projectList);
+          setTasks(taskRecords);
+          setShowDemoBanner(false);
+          return;
+        } catch (error) {
+          console.error(error);
         }
-        setProjects(projectList);
-        setTasks(taskRecords);
-        setShowDemoBanner(false);
-        return;
-      } catch (error) {
-        console.error(error);
       }
     }
+
     alert("Unable to load sample tasks.json");
-  }, [buildSnapshot, isLocalStorageMode]);
+  }, [buildSnapshot, setStorageMode]);
 
   const handleOpenFile = useCallback(async () => {
     if (!window.showOpenFilePicker) {

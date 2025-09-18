@@ -1,2 +1,7 @@
 node_modules
 .DS_Store
+/public/apple-touch-icon.png
+/public/favicon.ico
+/public/favicon.png
+/public/favicon-*.png
+/public/logo.png
