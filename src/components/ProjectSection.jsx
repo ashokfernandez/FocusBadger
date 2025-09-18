@@ -7,7 +7,9 @@ import { colors } from "../theme/tokens.js";
 export default function ProjectSection({
   name,
   projectKey,
-  items,
+  openItems,
+  closedItems,
+  allItems,
   onRenameProject,
   onRenameTask,
   onEditTask,
@@ -23,12 +25,16 @@ export default function ProjectSection({
   const [error, setError] = useState("");
   const [isEditing, setEditing] = useState(false);
   const canRename = useMemo(() => Boolean(projectKey && onRenameProject), [projectKey, onRenameProject]);
+  const safeOpenItems = openItems ?? [];
+  const safeClosedItems = closedItems ?? [];
+  const safeAllItems = allItems ?? [];
+
   const { hasPriorityHighlight, hasLowEffortHighlight } = useMemo(
     () =>
-      getProjectMoodHighlight(items, highlightMode, {
+      getProjectMoodHighlight(safeAllItems, highlightMode, {
         highlightedTaskIndexes
       }),
-    [items, highlightMode, highlightedTaskIndexes]
+    [safeAllItems, highlightMode, highlightedTaskIndexes]
   );
   const projectBorderColor = hasPriorityHighlight
     ? colors.borderPriority
@@ -169,14 +175,19 @@ export default function ProjectSection({
             </Tooltip>
           )}
         </Box>
-        <Badge colorScheme="gray">{items.length}</Badge>
+        <Badge colorScheme="gray">
+          {safeOpenItems.length} open
+          {safeClosedItems.length
+            ? ` · ${safeClosedItems.length} done`
+            : ""}
+        </Badge>
       </Flex>
       {error ? (
         <Text fontSize="xs" color={colors.textError} mb={3}>
           {error}
         </Text>
       ) : null}
-      {items.length ? (
+      {safeOpenItems.length ? (
         <SimpleGrid
           as="ul"
           columns={{ base: 1, md: 2, xl: 3 }}
@@ -185,7 +196,7 @@ export default function ProjectSection({
           m={0}
           p={0}
         >
-          {items.map((item) => (
+          {safeOpenItems.map((item) => (
             <TaskCard
               key={item.index}
               item={item}
@@ -201,9 +212,45 @@ export default function ProjectSection({
         </SimpleGrid>
       ) : (
         <Text fontSize="sm" color={colors.projectsEmptyText}>
-          {projectKey ? `Drag tasks here to assign to ${name}.` : "Drag tasks here to keep tasks unassigned."}
+          {projectKey
+            ? `No open tasks. Drag tasks here to assign to ${name}.`
+            : "No open tasks. Drag tasks here to keep tasks unassigned."}
         </Text>
       )}
+      {safeClosedItems.length ? (
+        <Box mt={safeOpenItems.length ? 6 : 4}>
+          <Text
+            fontSize="sm"
+            fontWeight="semibold"
+            mb={3}
+            color={colors.projectsEmptyText}
+          >
+            Completed
+          </Text>
+          <SimpleGrid
+            as="ul"
+            columns={{ base: 1, md: 2, xl: 3 }}
+            spacing={3}
+            listStyleType="none"
+            m={0}
+            p={0}
+          >
+            {safeClosedItems.map((item) => (
+              <TaskCard
+                key={item.index}
+                item={item}
+                onEdit={onEditTask}
+                onRenameTitle={onRenameTask}
+                onToggleDone={onToggleTask}
+                onEffortChange={onEffortChange}
+                draggable={allowDrop}
+                highlightMode={highlightMode}
+                highlightedTaskIndexes={highlightedTaskIndexes}
+              />
+            ))}
+          </SimpleGrid>
+        </Box>
+      ) : null}
     </Box>
   );
 }
