@@ -29,4 +29,4 @@ Declares that a project named `Work` exists. Projects appear in the UI even if t
 
 ## Using the data with AI
 
-FocusBadger's assistant workflow wraps this data in a structured prompt so LLMs can edit safely. See [AI_ASSIST.md](AI_ASSIST.md) for the conversational template and usage tips.
+FocusBadger's assistant workflow wraps this data in a structured prompt so LLMs can edit safely. Instead of returning a full dataset, the model replies with an ordered list of operations (`add_task`, `update_task_fields`, and friends) that FocusBadger applies to the current board. See [AI_ASSIST.md](AI_ASSIST.md) for the conversational template, operation schemas, and usage tips.

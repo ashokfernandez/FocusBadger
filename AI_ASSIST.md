@@ -33,4 +33,37 @@ You can also copy the template contents directly and customize them manually. Wh
 
 > _"Focus on the three tasks with the highest priority score and draft short action plans. If anything is stuck, suggest a new next step."_
 
-The assistant will send back the same dataset with edited `notes`, new tasks, or updated scores. Paste the reply into the Apply tab and FocusBadger will validate every record before merging it into your board.
+The assistant will respond with an operations payload that FocusBadger can apply directly (see below for the schema). Paste the reply into the Apply tab and FocusBadger will validate every change before merging it into your board.
+
+## Operation payloads
+
+FocusBadger expects the assistant to return exactly one JSON object with an `operations` array:
+
+```json
+{
+  "operations": [
+    { "add_project": { "data": { "name": "Personal" } } },
+    {
+      "add_task": {
+        "data": {
+          "title": "Warm beef for tacos",
+          "project": "Personal",
+          "importance": 4,
+          "urgency": 4,
+          "effort": 3
+        }
+      }
+    }
+  ]
+}
+```
+
+Operations run in order. Valid operation keys:
+
+- `add_project` — `data` requires a non-empty `name` string.
+- `rename_project` — `data` requires `from` (existing project) and `to` (new name).
+- `add_task` — `data` requires `title` plus optional `project`, `importance`, `urgency`, `effort`, `due`, `notes`.
+- `update_task_fields` — `data` requires `id` and a `set` object containing the fields to change. Set a field to `null` (except `title`) to clear it.
+- `mark_complete` — `data` requires `id` and an optional `completed_at` ISO timestamp.
+
+Projects are case sensitive. If you introduce a new project, emit an `add_project` operation before adding tasks to it. Task titles must remain non-empty strings after trimming. Numbers must respect the defined ranges (importance/urgency 1–5, effort 1–10).

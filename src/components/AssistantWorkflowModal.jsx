@@ -91,7 +91,7 @@ export default function AssistantWorkflowModal({
               </TabPanel>
               <TabPanel px={0} pt={4} pb={2}>
                 <Text fontSize="sm" color={ASSISTANT_WORKFLOW_TEXT_COLOR} mb={4}>
-                  Paste the assistant output below. JSON arrays and JSONL are both accepted. We validate every task before applying.
+                  Paste the assistant output below. JSON arrays, JSONL exports, or operation payloads are accepted. We validate every change before applying.
                 </Text>
                 <FormControl isInvalid={Boolean(error)}>
                   <FormLabel>Paste updated JSON</FormLabel>
