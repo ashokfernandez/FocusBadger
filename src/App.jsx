@@ -55,6 +55,7 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
+  const [moodHighlightLimit, setMoodHighlightLimit] = useState(3);
   const projectSortMode = TOOLBAR_SORTS.SCORE;
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
@@ -245,9 +246,10 @@ export default function App() {
     () =>
       selectHighlightTaskIndexes(tasks, matrixSortMode, {
         filters: matrixFilters,
-        now: highlightNow
+        now: highlightNow,
+        limit: moodHighlightLimit
       }),
-    [tasks, matrixSortMode, matrixFilters, highlightNow]
+    [tasks, matrixSortMode, matrixFilters, highlightNow, moodHighlightLimit]
   );
 
   const projectGroups = useMemo(
@@ -533,6 +535,14 @@ export default function App() {
     setMatrixSortMode((prev) => (prev === mode ? prev : mode));
   }, []);
 
+  const handleMoodHighlightLimitChange = useCallback((nextValue) => {
+    setMoodHighlightLimit((prev) => {
+      const proposed = typeof nextValue === "function" ? nextValue(prev) : nextValue;
+      const clamped = Math.max(1, Math.min(5, Math.round(proposed ?? prev)));
+      return clamped === prev ? prev : clamped;
+    });
+  }, []);
+
   const handleCreateTask = useCallback(
     (draft) => {
       const result = createTaskPayload(draft);
@@ -797,6 +807,8 @@ export default function App() {
           isLocalStorageEnabled={isLocalStorageMode}
           onToggleLocalStorage={handleStorageModeToggle}
           activeFileName={activeFileName}
+          moodHighlightLimit={moodHighlightLimit}
+          onMoodHighlightLimitChange={handleMoodHighlightLimitChange}
         />
         <Tabs
           index={workspaceTabIndex}

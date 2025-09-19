@@ -36,12 +36,14 @@ export function buildJSONExport(tasks = [], projects = []) {
   const openRecords = [...projectRecords, ...openTasks];
   const data = JSON.stringify(allRecords, null, 2);
   const clipboardData = JSON.stringify(openRecords, null, 2);
-  const clipboardText = fillPromptTemplate(assistantPromptTemplate, {
+  const clipboardPrompt = fillPromptTemplate(assistantPromptTemplate, {
     context: PROMPT_CONTEXT,
     goals: PROMPT_GOALS,
     expectedOutput: PROMPT_EXPECTED_OUTPUT,
     data: clipboardData
   });
+
+  const clipboardText = `# FocusBadger Assistant Briefing\n\n${clipboardPrompt}`;
 
   return { data, clipboardText, clipboardData };
 }

@@ -154,7 +154,7 @@ describe("task mood highlight", () => {
 });
 
 describe("highlight selection", () => {
-  it("picks the top five tasks by urgency, importance, then effort in priority mode", () => {
+  it("highlights three tasks by default in priority mode", () => {
     const tasks = [
       { urgency: 5, importance: 5, effort: 5 }, // index 0
       { urgency: 3, importance: 4, effort: 2 }, // index 1
@@ -165,6 +165,20 @@ describe("highlight selection", () => {
     ];
 
     const selected = selectHighlightTaskIndexes(tasks, MATRIX_SORTS.SCORE);
+    expect(Array.from(selected)).toEqual([0, 4, 2]);
+  });
+
+  it("picks tasks by urgency, importance, then effort when the limit increases", () => {
+    const tasks = [
+      { urgency: 5, importance: 5, effort: 5 }, // index 0
+      { urgency: 3, importance: 4, effort: 2 }, // index 1
+      { urgency: 5, importance: 2, effort: 1 }, // index 2
+      { urgency: 2, importance: 5, effort: 1 }, // index 3
+      { urgency: 5, importance: 5, effort: 10 }, // index 4
+      { urgency: 4, importance: 3, effort: 1 } // index 5
+    ];
+
+    const selected = selectHighlightTaskIndexes(tasks, MATRIX_SORTS.SCORE, { limit: 5 });
     expect(Array.from(selected)).toEqual([0, 4, 2, 5, 1]);
     expect(selected.has(3)).toBe(false);
   });
@@ -185,10 +199,23 @@ describe("highlight selection", () => {
       limit: 5
     });
 
-    expect(Array.from(selected)).toEqual([0, 1, 3, 5]);
+    expect(Array.from(selected)).toEqual([0, 5, 1, 3]);
     expect(selected.has(2)).toBe(false);
     expect(selected.has(4)).toBe(false);
     expect(selected.has(6)).toBe(false);
+  });
+
+  it("breaks low effort ties by urgency then importance", () => {
+    const tasks = [
+      { effort: 1, urgency: 4, importance: 2 }, // idx0
+      { effort: 1, urgency: 4, importance: 5 }, // idx1
+      { effort: 1, urgency: 3, importance: 5 }, // idx2
+      { effort: 2, urgency: 5, importance: 5 } // idx3 higher effort
+    ];
+
+    const selected = selectHighlightTaskIndexes(tasks, MATRIX_SORTS.LOW_EFFORT, { limit: 3 });
+    expect(Array.from(selected)).toEqual([1, 0, 2]);
+    expect(selected.has(3)).toBe(false);
   });
 });
 

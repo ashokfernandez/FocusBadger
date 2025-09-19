@@ -16,7 +16,7 @@ import {
   WrapItem,
   useColorMode
 } from "@chakra-ui/react";
-import { AttachmentIcon, ChevronDownIcon, SettingsIcon } from "@chakra-ui/icons";
+import { AddIcon, AttachmentIcon, ChevronDownIcon, MinusIcon, SettingsIcon } from "@chakra-ui/icons";
 import { useSystemColorModeSync } from "./ColorModeToggle.jsx";
 import SaveStatusIndicator from "./SaveStatusIndicator.jsx";
 import { HEADER_LAYOUT } from "../layout.js";
@@ -32,6 +32,8 @@ export default function WorkspaceHeader({
   isLocalStorageEnabled = false,
   onToggleLocalStorage,
   activeFileName = "",
+  moodHighlightLimit = 3,
+  onMoodHighlightLimitChange,
   title = "FocusBadger",
   subtitle = "Focus on what matters"
 }) {
@@ -49,6 +51,16 @@ export default function WorkspaceHeader({
   const handleColorModeToggle = (event) => {
     event?.stopPropagation?.();
     toggleColorMode();
+  };
+
+  const canDecreaseMoodHighlights = moodHighlightLimit > 1;
+  const canIncreaseMoodHighlights = moodHighlightLimit < 5;
+
+  const adjustMoodHighlightLimit = (delta) => {
+    onMoodHighlightLimitChange?.((current) => {
+      const next = typeof current === "number" ? current + delta : moodHighlightLimit + delta;
+      return next;
+    });
   };
 
   return (
@@ -129,6 +141,53 @@ export default function WorkspaceHeader({
                         onClick={(event) => event.stopPropagation()}
                         onChange={handleColorModeToggle}
                       />
+                    </Flex>
+                  </MenuItem>
+                  <MenuItem closeOnSelect={false}>
+                    <Flex align="center" justify="space-between" w="full" gap={4}>
+                      <Box>
+                        <Text fontSize="sm" fontWeight="medium">
+                          Mood highlights
+                        </Text>
+                        <Text fontSize="xs" color={colors.textSubtle}>
+                          Choose how many tasks glow when the mood switch is on.
+                        </Text>
+                      </Box>
+                      <Flex align="center" gap={2}>
+                        <IconButton
+                          size="xs"
+                          variant="outline"
+                          aria-label="Decrease mood highlight count"
+                          icon={<MinusIcon />}
+                          isDisabled={!canDecreaseMoodHighlights}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (canDecreaseMoodHighlights) {
+                              adjustMoodHighlightLimit(-1);
+                            }
+                          }}
+                        />
+                        <Box minW="32px">
+                          <Text fontSize="sm" fontWeight="semibold" textAlign="center">
+                            {moodHighlightLimit}
+                          </Text>
+                        </Box>
+                        <IconButton
+                          size="xs"
+                          variant="outline"
+                          aria-label="Increase mood highlight count"
+                          icon={<AddIcon />}
+                          isDisabled={!canIncreaseMoodHighlights}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (canIncreaseMoodHighlights) {
+                              adjustMoodHighlightLimit(1);
+                            }
+                          }}
+                        />
+                      </Flex>
                     </Flex>
                   </MenuItem>
                 </MenuGroup>
