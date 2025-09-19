@@ -147,17 +147,17 @@ export default function WorkspaceHeader({
                     <Flex align="center" justify="space-between" w="full" gap={4}>
                       <Box>
                         <Text fontSize="sm" fontWeight="medium">
-                          Mood highlights
+                          Focus highlights
                         </Text>
                         <Text fontSize="xs" color={colors.textSubtle}>
-                          Choose how many tasks glow when the mood switch is on.
+                          Choose how many tasks glow when the focus switch is on.
                         </Text>
                       </Box>
                       <Flex align="center" gap={2}>
                         <IconButton
                           size="xs"
                           variant="outline"
-                          aria-label="Decrease mood highlight count"
+                          aria-label="Decrease focus highlight count"
                           icon={<MinusIcon />}
                           isDisabled={!canDecreaseMoodHighlights}
                           onClick={(event) => {
@@ -176,7 +176,7 @@ export default function WorkspaceHeader({
                         <IconButton
                           size="xs"
                           variant="outline"
-                          aria-label="Increase mood highlight count"
+                          aria-label="Increase focus highlight count"
                           icon={<AddIcon />}
                           isDisabled={!canIncreaseMoodHighlights}
                           onClick={(event) => {

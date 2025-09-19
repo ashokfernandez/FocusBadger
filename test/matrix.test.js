@@ -86,7 +86,7 @@ describe("matrix sorting", () => {
   });
 });
 
-describe("task mood highlight", () => {
+describe("task focus highlight", () => {
   it("respects highlighted selection when provided for priority mode", () => {
     const highlightSet = new Set([2]);
     const task = { urgency: 4, importance: 5 };
@@ -145,7 +145,7 @@ describe("task mood highlight", () => {
     ).toBe(false);
   });
 
-  it("does not flag highlights when no mood is selected", () => {
+  it("does not flag highlights when no focus is selected", () => {
     const sample = { urgency: 5, importance: 5, effort: 1 };
     const { isPriorityHighlight, isLowEffortHighlight } = getTaskMoodHighlight(sample, undefined);
     expect(isPriorityHighlight).toBe(false);
@@ -166,6 +166,16 @@ describe("highlight selection", () => {
 
     const selected = selectHighlightTaskIndexes(tasks, MATRIX_SORTS.SCORE);
     expect(Array.from(selected)).toEqual([0, 4, 2]);
+  });
+
+  it("returns an empty set when focus highlights are turned off", () => {
+    const tasks = [
+      { urgency: 5, importance: 5, effort: 5 },
+      { urgency: 3, importance: 4, effort: 2 }
+    ];
+
+    const selected = selectHighlightTaskIndexes(tasks, undefined);
+    expect(selected.size).toBe(0);
   });
 
   it("picks tasks by urgency, importance, then effort when the limit increases", () => {
@@ -219,7 +229,7 @@ describe("highlight selection", () => {
   });
 });
 
-describe("project mood highlight", () => {
+describe("project focus highlight", () => {
   it("surfaces priority highlight when any task qualifies", () => {
     const items = [
       { index: 1, task: { urgency: 1, importance: 1 } },
