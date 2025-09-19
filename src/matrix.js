@@ -79,7 +79,7 @@ function resolveHighlightEffort(task) {
   return Number.isFinite(rawEffort) ? rawEffort : Number.POSITIVE_INFINITY;
 }
 
-function compareHighlightCandidates(a, b) {
+function comparePriorityHighlightCandidates(a, b) {
   const urgencyDiff = b.urgency - a.urgency;
   if (urgencyDiff !== 0) return urgencyDiff;
 
@@ -95,10 +95,26 @@ function compareHighlightCandidates(a, b) {
   return a.index - b.index;
 }
 
+function compareLowEffortHighlightCandidates(a, b) {
+  const effortDiff = a.effort - b.effort;
+  if (effortDiff !== 0) return effortDiff;
+
+  const urgencyDiff = b.urgency - a.urgency;
+  if (urgencyDiff !== 0) return urgencyDiff;
+
+  const importanceDiff = b.importance - a.importance;
+  if (importanceDiff !== 0) return importanceDiff;
+
+  const scoreDiff = score(b.task ?? {}) - score(a.task ?? {});
+  if (scoreDiff !== 0) return scoreDiff;
+
+  return a.index - b.index;
+}
+
 export function selectHighlightTaskIndexes(
   tasks = [],
   highlightMode,
-  { filters = [], limit = 5, now = new Date() } = {}
+  { filters = [], limit = 3, now = new Date() } = {}
 ) {
   if (!highlightMode || !Array.isArray(tasks) || limit <= 0) {
     return new Set();
@@ -131,7 +147,12 @@ export function selectHighlightTaskIndexes(
     return new Set();
   }
 
-  candidates.sort(compareHighlightCandidates);
+  const comparator =
+    mode === MATRIX_SORTS.LOW_EFFORT
+      ? compareLowEffortHighlightCandidates
+      : comparePriorityHighlightCandidates;
+
+  candidates.sort(comparator);
 
   const selected = candidates.slice(0, limit).map((entry) => entry.index);
   return new Set(selected);

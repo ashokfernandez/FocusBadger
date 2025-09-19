@@ -11,7 +11,7 @@ FocusBadger is the cheeky little strategist that keeps your todo list honest. Dr
 ## Why FocusBadger?
 
 - **See the whole story.** Each card shows urgency, importance, and effort so you can quickly decide which bets matter now and which can wait.
-- **Match the moment.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan, then flip the mood switch for quick wins or deep work.
+- **Match the moment.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan, then flip the mood switch to spotlight the next 1–5 tasks that match your energy.
 - **Stay grounded.** Gather work, home, and side quests into one calm view so nothing slips.
 - **Own your data.** Everything lives in approachable JSONL that plays nicely with Git, scripts, and AI helpers.
 
@@ -28,7 +28,7 @@ Curious how the task file is structured? Peek at the [data guide](DATA.md).
 
 1. Brain-dump projects and tasks into the board, tagging owners or themes as you go.
 2. Drag cards between lanes to sketch the rhythm of the week.
-3. Hit the mood switch whenever your energy shifts—FocusBadger reshuffles to highlight the next best bite.
+3. Hit the mood switch whenever your energy shifts—FocusBadger reshuffles to highlight the next best bite, and you can tweak how many cards glow from the settings menu.
 4. Share the board with an AI assistant for fast edits or summaries using the workflow in [AI_ASSIST.md](AI_ASSIST.md).
 5. Celebrate wins and capture learnings before rolling unfinished work forward.
 
