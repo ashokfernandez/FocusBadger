@@ -37,7 +37,6 @@ import AddTaskModal from "./components/AddTaskModal.jsx";
 import GlobalToolbar from "./components/GlobalToolbar.jsx";
 import TaskEditor from "./components/TaskEditor.jsx";
 import ProjectManagerModal from "./components/ProjectManagerModal.jsx";
-import DemoDataBanner from "./components/DemoDataBanner.jsx";
 import WorkspaceHeader from "./components/WorkspaceHeader.jsx";
 import PriorityMatrixSection from "./components/PriorityMatrixSection.jsx";
 import ProjectsPanel from "./components/ProjectsPanel.jsx";
@@ -71,7 +70,6 @@ export default function App() {
   const [jsonError, setJsonError] = useState("");
   const [jsonParsed, setJsonParsed] = useState(null);
   const [isJsonSaving, setIsJsonSaving] = useState(false);
-  const [showDemoBanner, setShowDemoBanner] = useState(false);
   const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
   const [activeFileName, setActiveFileName] = useState("");
   const [storageMode, setStorageMode] = useState(() => {
@@ -114,12 +112,6 @@ export default function App() {
     }
   }, [jsonModal.isOpen, jsonExport, jsonTabIndex]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!window.showOpenFilePicker) {
-      setShowDemoBanner(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -696,16 +688,30 @@ export default function App() {
 
   const handleLoadSample = useCallback(async () => {
     const resolveSampleUrl = (path) => {
-      const baseValue = import.meta.env.BASE_URL ?? "/";
-      let normalizedBase = baseValue || "/";
-      if (!normalizedBase.startsWith("/")) {
-        normalizedBase = `/${normalizedBase}`;
-      }
-      if (!normalizedBase.endsWith("/")) {
-        normalizedBase = `${normalizedBase}/`;
-      }
       const trimmedPath = path.replace(/^\/+/u, "");
-      return `${normalizedBase}${trimmedPath}`;
+
+      if (typeof window === "undefined") {
+        return trimmedPath;
+      }
+
+      const baseElement = document.querySelector("base")?.href;
+      if (baseElement) {
+        try {
+          return new URL(trimmedPath, baseElement).toString();
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      try {
+        const baseValue = import.meta.env.BASE_URL ?? "/";
+        const baseUrl = new URL(baseValue, window.location.href);
+        return new URL(trimmedPath, baseUrl).toString();
+      } catch (error) {
+        console.error(error);
+      }
+
+      return new URL(trimmedPath, window.location.href).toString();
     };
 
     const sources = ["tasks.json", "tasks.sample.jsonl"]; // attempt canonical names first
@@ -736,7 +742,6 @@ export default function App() {
 
           setProjects(projectList);
           setTasks(taskRecords);
-          setShowDemoBanner(false);
           return;
         } catch (error) {
           console.error(error);
@@ -799,11 +804,6 @@ export default function App() {
   return (
     <Container maxW="8xl" px={{ base: 4, md: 6 }} py={10}>
       <Stack spacing={10}>
-        <DemoDataBanner
-          isVisible={showDemoBanner}
-          onLoadDemo={handleLoadSample}
-          onDismiss={() => setShowDemoBanner(false)}
-        />
         <WorkspaceHeader
           onAddTask={addTaskDisclosure.onOpen}
           onOpenFile={handleOpenFile}
