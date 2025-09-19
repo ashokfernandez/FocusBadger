@@ -1,12 +1,9 @@
 import { score } from "./model.js";
 import { compareInsensitive } from "./projects.js";
 import { ALL_PROJECTS, UNASSIGNED_LABEL } from "./matrix.js";
+import { LIST_SORTS } from "./listSorts.js";
 
-export const TOOLBAR_SORTS = {
-  SCORE: "score",
-  DUE_DATE: "due-date",
-  TITLE: "title"
-};
+export const TOOLBAR_SORTS = LIST_SORTS;
 
 export function buildProjectFilterOptions(projects = []) {
   const seen = new Set();
@@ -23,49 +20,68 @@ export function buildProjectFilterOptions(projects = []) {
   return options;
 }
 
-function normalizeDueValue(task) {
-  const due = task?.due;
-  if (!due) return Number.POSITIVE_INFINITY;
-  const parsed = Date.parse(due);
-  if (Number.isNaN(parsed)) return Number.POSITIVE_INFINITY;
+function normalizeEffort(value) {
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function getCreatedTimestamp(task) {
+  const created = task?.created;
+  if (!created) return Number.NaN;
+  const parsed = Date.parse(created);
+  if (Number.isNaN(parsed)) return Number.NaN;
   return parsed;
 }
 
-function compareTitle(a = "", b = "") {
-  return a.localeCompare(b, undefined, { sensitivity: "base" });
+function compareCreatedAsc(a, b) {
+  const createdA = getCreatedTimestamp(a.task);
+  const createdB = getCreatedTimestamp(b.task);
+  if (!Number.isNaN(createdA) && !Number.isNaN(createdB)) {
+    const diff = createdA - createdB;
+    if (diff !== 0) return diff;
+  }
+  if (!Number.isNaN(createdA)) return -1;
+  if (!Number.isNaN(createdB)) return 1;
+  return 0;
 }
 
-export function compareProjectItems(a, b, sortMode = TOOLBAR_SORTS.SCORE) {
-  const sort = sortMode ?? TOOLBAR_SORTS.SCORE;
+function compareCreatedDesc(a, b) {
+  const createdA = getCreatedTimestamp(a.task);
+  const createdB = getCreatedTimestamp(b.task);
+  if (!Number.isNaN(createdA) && !Number.isNaN(createdB)) {
+    const diff = createdB - createdA;
+    if (diff !== 0) return diff;
+  }
+  if (!Number.isNaN(createdB)) return 1;
+  if (!Number.isNaN(createdA)) return -1;
+  return 0;
+}
+
+export function compareProjectItems(a, b, sortMode = TOOLBAR_SORTS.MOST_RECENT) {
+  const sort = sortMode ?? TOOLBAR_SORTS.MOST_RECENT;
   if (a.task.done !== b.task.done) {
     return a.task.done ? 1 : -1;
   }
 
   const scoreA = score(a.task ?? {});
   const scoreB = score(b.task ?? {});
-  const dueA = normalizeDueValue(a.task);
-  const dueB = normalizeDueValue(b.task);
-  const titleDiff = compareTitle(a.task?.title, b.task?.title);
-
-  if (sort === TOOLBAR_SORTS.DUE_DATE) {
-    const dueDiff = dueA - dueB;
-    if (dueDiff !== 0) return dueDiff;
-  } else if (sort === TOOLBAR_SORTS.TITLE) {
-    if (titleDiff !== 0) return titleDiff;
+  if (sort === TOOLBAR_SORTS.LOWEST_EFFORT) {
+    const effortDiff = normalizeEffort(a.task?.effort) - normalizeEffort(b.task?.effort);
+    if (effortDiff !== 0) return effortDiff;
+  } else if (sort === TOOLBAR_SORTS.OLDEST) {
+    const createdDiff = compareCreatedAsc(a, b);
+    if (createdDiff !== 0) return createdDiff;
   } else {
-    const scoreDiff = scoreB - scoreA;
-    if (scoreDiff !== 0) return scoreDiff;
+    const createdDiff = compareCreatedDesc(a, b);
+    if (createdDiff !== 0) return createdDiff;
   }
 
   const scoreDiff = scoreB - scoreA;
   if (scoreDiff !== 0) return scoreDiff;
 
-  if (titleDiff !== 0) return titleDiff;
-
   return a.index - b.index;
 }
 
-export function sortProjectItems(items = [], sortMode = TOOLBAR_SORTS.SCORE) {
+export function sortProjectItems(items = [], sortMode = TOOLBAR_SORTS.MOST_RECENT) {
   return items.slice().sort((a, b) => compareProjectItems(a, b, sortMode));
 }
 
@@ -94,7 +110,7 @@ function buildSectionPayload(name, projectKey, items = [], sortMode) {
 export function projectSectionsFrom(
   tasks = [],
   projects = [],
-  sortMode = TOOLBAR_SORTS.SCORE,
+  sortMode = TOOLBAR_SORTS.MOST_RECENT,
   filters = [ALL_PROJECTS]
 ) {
   const map = new Map();

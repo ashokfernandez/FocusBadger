@@ -10,9 +10,9 @@ export const MATRIX_SORT_OPTION_CONFIG = [
 ];
 
 export const GLOBAL_TOOLBAR_SORT_OPTIONS = [
-  { value: TOOLBAR_SORTS.SCORE, label: "Score (highest first)" },
-  { value: TOOLBAR_SORTS.DUE_DATE, label: "Due date (earliest)" },
-  { value: TOOLBAR_SORTS.TITLE, label: "Title (A–Z)" }
+  { value: TOOLBAR_SORTS.LOWEST_EFFORT, label: "Lowest Effort" },
+  { value: TOOLBAR_SORTS.OLDEST, label: "Oldest" },
+  { value: TOOLBAR_SORTS.MOST_RECENT, label: "Most Recent" }
 ];
 
 export const GLOBAL_TOOLBAR_STACK_SPACING = { base: 3, md: 4 };

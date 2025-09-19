@@ -42,6 +42,7 @@ import PriorityMatrixSection from "./components/PriorityMatrixSection.jsx";
 import ProjectsPanel from "./components/ProjectsPanel.jsx";
 import AssistantWorkflowModal from "./components/AssistantWorkflowModal.jsx";
 import MatrixSortControl from "./components/MatrixSortControl.jsx";
+import ListSortControl from "./components/ListSortControl.jsx";
 const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
 const STORAGE_MODE_KEY = "taskbadger:storageMode";
 const STORAGE_MODE_LOCAL = "local";
@@ -55,7 +56,7 @@ export default function App() {
   const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
   const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
   const [moodHighlightLimit, setMoodHighlightLimit] = useState(3);
-  const projectSortMode = TOOLBAR_SORTS.SCORE;
+  const [listSortMode, setListSortMode] = useState(TOOLBAR_SORTS.MOST_RECENT);
   const fileHandleRef = useRef(null);
   const disclosure = useDisclosure();
   const projectManagerDisclosure = useDisclosure();
@@ -227,12 +228,12 @@ export default function App() {
     });
 
     return {
-      today: sortMatrixEntries(groups.today, matrixSortMode),
-      schedule: sortMatrixEntries(groups.schedule, matrixSortMode),
-      delegate: sortMatrixEntries(groups.delegate, matrixSortMode),
-      consider: sortMatrixEntries(groups.consider, matrixSortMode)
+      today: sortMatrixEntries(groups.today, matrixSortMode, { now, listSortMode }),
+      schedule: sortMatrixEntries(groups.schedule, matrixSortMode, { now, listSortMode }),
+      delegate: sortMatrixEntries(groups.delegate, matrixSortMode, { now, listSortMode }),
+      consider: sortMatrixEntries(groups.consider, matrixSortMode, { now, listSortMode })
     };
-  }, [tasks, matrixFilters, matrixSortMode, highlightNow]);
+  }, [tasks, matrixFilters, matrixSortMode, highlightNow, listSortMode]);
 
   const highlightedTaskIndexes = useMemo(
     () =>
@@ -245,8 +246,8 @@ export default function App() {
   );
 
   const projectGroups = useMemo(
-    () => projectSectionsFrom(tasks, projects, projectSortMode, matrixFilters),
-    [tasks, projects, projectSortMode, matrixFilters]
+    () => projectSectionsFrom(tasks, projects, listSortMode, matrixFilters),
+    [tasks, projects, listSortMode, matrixFilters]
   );
 
   const projectUsage = useMemo(() => {
@@ -849,7 +850,9 @@ export default function App() {
                     filterOptions={matrixFilterOptions}
                     activeFilters={matrixFilters}
                     onToggleFilter={toggleMatrixFilter}
-                  />
+                  >
+                    <ListSortControl value={listSortMode} onChange={setListSortMode} label="Sort" />
+                  </GlobalToolbar>
                   <Box
                     maxH={{ base: "none", lg: "80vh" }}
                     overflowY={{ base: "visible", lg: "auto" }}
@@ -871,19 +874,28 @@ export default function App() {
                 </Stack>
               </TabPanel>
               <TabPanel px={0} pt={0}>
-                <ProjectsPanel
-                  projectGroups={projectGroups}
-                  onManageProjects={projectManagerDisclosure.onOpen}
-                  onAddTask={addTaskDisclosure.onOpen}
-                  onRenameProject={renameProject}
-                  onRenameTask={handleTaskTitleRename}
-                  onEditTask={handleOpenEditor}
-                  onToggleTask={handleToggleDone}
-                  onDropProject={handleProjectDrop}
-                  onEffortChange={handleEffortCommit}
-                  highlightMode={matrixSortMode}
-                  highlightedTaskIndexes={highlightedTaskIndexes}
-                />
+                <Stack spacing={4}>
+                  <GlobalToolbar
+                    filterOptions={matrixFilterOptions}
+                    activeFilters={matrixFilters}
+                    onToggleFilter={toggleMatrixFilter}
+                  >
+                    <ListSortControl value={listSortMode} onChange={setListSortMode} label="Sort" />
+                  </GlobalToolbar>
+                  <ProjectsPanel
+                    projectGroups={projectGroups}
+                    onManageProjects={projectManagerDisclosure.onOpen}
+                    onAddTask={addTaskDisclosure.onOpen}
+                    onRenameProject={renameProject}
+                    onRenameTask={handleTaskTitleRename}
+                    onEditTask={handleOpenEditor}
+                    onToggleTask={handleToggleDone}
+                    onDropProject={handleProjectDrop}
+                    onEffortChange={handleEffortCommit}
+                    highlightMode={matrixSortMode}
+                    highlightedTaskIndexes={highlightedTaskIndexes}
+                  />
+                </Stack>
               </TabPanel>
             </TabPanels>
           </Stack>

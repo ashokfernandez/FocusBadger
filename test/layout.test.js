@@ -50,11 +50,7 @@ describe("responsive layout", () => {
 
   it("exposes toolbar sort options for readability", () => {
     const labels = GLOBAL_TOOLBAR_SORT_OPTIONS.map((option) => option.label);
-    expect(labels).toEqual([
-      "Score (highest first)",
-      "Due date (earliest)",
-      "Title (A–Z)"
-    ]);
+    expect(labels).toEqual(["Lowest Effort", "Oldest", "Most Recent"]);
   });
 
   it("keeps workspace actions touch friendly", () => {
