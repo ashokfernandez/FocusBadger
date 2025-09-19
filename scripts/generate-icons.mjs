@@ -31,11 +31,6 @@ async function ensureOutputDir() {
 }
 
 async function generatePngs() {
-  const sipsArgs = process.platform === "darwin";
-  if (!sipsArgs) {
-    throw new Error("Icon generation currently requires macOS (sips command not available)");
-  }
-
   await Promise.all(
     pngTargets.map(async ({ size, file }) => {
       const dest = resolve(outputDir, file);
@@ -101,6 +96,12 @@ async function copyLogo() {
 
 async function main() {
   await ensureOutputDir();
+  if (process.platform !== "darwin") {
+    console.log("Skipping favicon generation: sips is only available on macOS.");
+    await copyLogo();
+    return;
+  }
+
   await generatePngs();
   await createFaviconIco();
   await copyLogo();
