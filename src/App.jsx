@@ -585,7 +585,10 @@ export default function App() {
         setJsonError("");
         return;
       }
-      const result = parseJSONInput(jsonInputValue);
+      const result = parseJSONInput(jsonInputValue, {
+        baseTasks: tasks,
+        baseProjects: projects
+      });
       if (result.ok) {
         setJsonParsed(result);
         setJsonError("");
@@ -594,13 +597,16 @@ export default function App() {
         setJsonError(result.error ?? "");
       }
     },
-    [jsonInputValue]
+    [jsonInputValue, tasks, projects]
   );
 
   const handleJsonInputChange = useCallback((event) => {
     const { value } = event.target;
     setJsonInputValue(value);
-    const result = parseJSONInput(value);
+    const result = parseJSONInput(value, {
+      baseTasks: tasks,
+      baseProjects: projects
+    });
     if (result.ok) {
       setJsonParsed(result);
       setJsonError("");
@@ -608,7 +614,7 @@ export default function App() {
       setJsonParsed(null);
       setJsonError(result.error ?? "");
     }
-  }, []);
+  }, [tasks, projects]);
 
   const handleJsonSave = useCallback(async () => {
     if (!jsonParsed?.ok) return;

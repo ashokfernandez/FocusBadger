@@ -1,6 +1,7 @@
 import { parseJSONL } from "./jsonl.js";
 import { hydrateRecords } from "./projects.js";
 import assistantPromptTemplate from "./prompts/assistantPrompt.js";
+import { applyOperations } from "./operations.js";
 
 const PROMPT_CONTEXT = [
   "FocusBadger is a local-first planning board that stores every project and task in a JSON Lines file.",
@@ -14,10 +15,10 @@ const PROMPT_GOALS = [
 ].join("\n");
 
 const PROMPT_EXPECTED_OUTPUT = [
-  "- Reply with the full data set as a JSON array string that FocusBadger can paste directly.",
-  "- Keep all project records before task records.",
-  "- Maintain existing ids and timestamps; use ISO 8601 UTC when creating or updating tasks.",
-  "- Do not include commentary outside of the JSON payload."
+  "- Reply with a JSON object that contains an operations array and nothing else.",
+  "- Use the allowed operation shapes below with required fields present.",
+  "- Maintain ids and timestamps for existing tasks; use ISO 8601 UTC for new timestamps.",
+  "- Do not include commentary outside of the JSON code block."
 ].join("\n");
 
 function fillPromptTemplate(template, values) {
@@ -52,7 +53,8 @@ function ensureObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
 }
 
-export function parseJSONInput(rawInput) {
+export function parseJSONInput(rawInput, options = {}) {
+  const { baseTasks = [], baseProjects = [], now } = options;
   const text = (rawInput ?? "").trim();
   if (!text) {
     return { ok: false, error: "Paste JSON before saving." };
@@ -88,6 +90,14 @@ export function parseJSONInput(rawInput) {
     return { ok: false, error: "Every record must be a JSON object." };
   }
 
+  if (records.length === 1 && Array.isArray(records[0]?.operations)) {
+    const applied = applyOperations(records[0], baseTasks, baseProjects, now);
+    if (!applied.ok) {
+      return { ok: false, error: applied.error };
+    }
+    return { ok: true, tasks: applied.tasks, projects: applied.projects, origin: "operations" };
+  }
+
   const { tasks, projects } = hydrateRecords(records);
 
   const invalidTask = tasks.find((task) => typeof task.title !== "string" || !task.title.trim());
@@ -95,5 +105,5 @@ export function parseJSONInput(rawInput) {
     return { ok: false, error: "Each task needs a non-empty title." };
   }
 
-  return { ok: true, tasks, projects };
+  return { ok: true, tasks, projects, origin: "records" };
 }

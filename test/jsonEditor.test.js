@@ -60,6 +60,86 @@ describe("parseJSONInput", () => {
     expect(result.error).toBe("Each task needs a non-empty title.");
   });
 
+  it("applies operation payloads against the current state", () => {
+    const baseTasks = [
+      {
+        id: "abc",
+        title: "Existing",
+        project: "Personal",
+        importance: 3,
+        urgency: 2,
+        effort: 4,
+        done: false,
+        created: "2024-01-01T00:00:00.000Z",
+        updated: "2024-01-01T00:00:00.000Z"
+      }
+    ];
+    const baseProjects = ["Personal"];
+    const payload = {
+      operations: [
+        { add_project: { data: { name: "Marketing" } } },
+        {
+          update_task_fields: {
+            data: { id: "abc", set: { notes: "Follow up", importance: 4 } }
+          }
+        },
+        {
+          mark_complete: {
+            data: { id: "abc", completed_at: "2024-02-01T00:00:00.000Z" }
+          }
+        },
+        {
+          add_task: {
+            data: {
+              title: "Warm beef for tacos",
+              project: "Personal",
+              importance: 4,
+              urgency: 4,
+              effort: 3
+            }
+          }
+        }
+      ]
+    };
+
+    const result = parseJSONInput(JSON.stringify(payload), {
+      baseTasks,
+      baseProjects,
+      now: new Date("2024-02-01T12:00:00Z")
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.origin).toBe("operations");
+    expect(result.projects).toEqual(["Marketing", "Personal"]);
+    expect(result.tasks.length).toBe(2);
+    const [updatedTask, newTask] = result.tasks;
+    expect(updatedTask.notes).toBe("Follow up");
+    expect(updatedTask.importance).toBe(4);
+    expect(updatedTask.done).toBe(true);
+    expect(updatedTask.updated).toBe("2024-02-01T00:00:00.000Z");
+    expect(newTask.title).toBe("Warm beef for tacos");
+    expect(newTask.project).toBe("Personal");
+    expect(newTask.created).toBe("2024-02-01T12:00:00.000Z");
+    expect(newTask.updated).toBe("2024-02-01T12:00:00.000Z");
+  });
+
+  it("describes invalid operations clearly", () => {
+    const payload = {
+      operations: [
+        {
+          add_task: {
+            data: {
+              title: "  "
+            }
+          }
+        }
+      ]
+    };
+    const result = parseJSONInput(JSON.stringify(payload));
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe("Operation 1 (add_task): title is required.");
+  });
+
   it("returns error for malformed JSON", () => {
     const result = parseJSONInput("{ invalid");
     expect(result.ok).toBe(false);
