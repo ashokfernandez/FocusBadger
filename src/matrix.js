@@ -1,4 +1,5 @@
 import { bucket, score } from "./model.js";
+import { LIST_SORTS } from "./listSorts.js";
 
 export const ALL_PROJECTS = "__all__";
 export const UNASSIGNED_LABEL = "Unassigned";
@@ -28,22 +29,105 @@ function normalizeEffort(value) {
   return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
 }
 
-function compareByScore(a, b) {
-  const diff = score(b.task) - score(a.task);
-  if (diff !== 0) return diff;
-  return (a.task.title ?? "").localeCompare(b.task.title ?? "");
+function compareByTitle(a, b) {
+  return (a.task?.title ?? "").localeCompare(b.task?.title ?? "");
 }
 
-export function compareMatrixEntries(a, b, sortMode = MATRIX_SORTS.SCORE) {
-  if (sortMode === MATRIX_SORTS.LOW_EFFORT) {
+function comparePriorityOrder(a, b, now = new Date()) {
+  const urgencyDiff =
+    resolveHighlightUrgency(b.task, now) - resolveHighlightUrgency(a.task, now);
+  if (urgencyDiff !== 0) return urgencyDiff;
+
+  const importanceDiff =
+    resolveHighlightImportance(b.task) - resolveHighlightImportance(a.task);
+  if (importanceDiff !== 0) return importanceDiff;
+
+  const effortDiff = normalizeEffort(a.task?.effort) - normalizeEffort(b.task?.effort);
+  if (effortDiff !== 0) return effortDiff;
+
+  const scoreDiff = score(b.task ?? {}) - score(a.task ?? {});
+  if (scoreDiff !== 0) return scoreDiff;
+
+  return compareByTitle(a, b);
+}
+
+function compareLowEffortOrder(a, b, now = new Date()) {
+  const effortDiff = normalizeEffort(a.task?.effort) - normalizeEffort(b.task?.effort);
+  if (effortDiff !== 0) return effortDiff;
+
+  const urgencyDiff =
+    resolveHighlightUrgency(b.task, now) - resolveHighlightUrgency(a.task, now);
+  if (urgencyDiff !== 0) return urgencyDiff;
+
+  const importanceDiff =
+    resolveHighlightImportance(b.task) - resolveHighlightImportance(a.task);
+  if (importanceDiff !== 0) return importanceDiff;
+
+  const scoreDiff = score(b.task ?? {}) - score(a.task ?? {});
+  if (scoreDiff !== 0) return scoreDiff;
+
+  return compareByTitle(a, b);
+}
+
+function getCreatedTimestamp(entry) {
+  const created = entry?.task?.created;
+  if (!created) return Number.NaN;
+  const parsed = Date.parse(created);
+  if (Number.isNaN(parsed)) return Number.NaN;
+  return parsed;
+}
+
+function compareCreatedAsc(a, b) {
+  const createdA = getCreatedTimestamp(a);
+  const createdB = getCreatedTimestamp(b);
+  if (!Number.isNaN(createdA) && !Number.isNaN(createdB)) {
+    const diff = createdA - createdB;
+    if (diff !== 0) return diff;
+  }
+  if (!Number.isNaN(createdA)) return -1;
+  if (!Number.isNaN(createdB)) return 1;
+  return 0;
+}
+
+function compareCreatedDesc(a, b) {
+  const createdA = getCreatedTimestamp(a);
+  const createdB = getCreatedTimestamp(b);
+  if (!Number.isNaN(createdA) && !Number.isNaN(createdB)) {
+    const diff = createdB - createdA;
+    if (diff !== 0) return diff;
+  }
+  if (!Number.isNaN(createdB)) return 1;
+  if (!Number.isNaN(createdA)) return -1;
+  return 0;
+}
+
+export function compareMatrixEntries(
+  a,
+  b,
+  sortMode = MATRIX_SORTS.SCORE,
+  { now, listSortMode } = {}
+) {
+  if (listSortMode === LIST_SORTS.LOWEST_EFFORT) {
     const effortDiff = normalizeEffort(a.task?.effort) - normalizeEffort(b.task?.effort);
     if (effortDiff !== 0) return effortDiff;
+  } else if (listSortMode === LIST_SORTS.OLDEST) {
+    const createdDiff = compareCreatedAsc(a, b);
+    if (createdDiff !== 0) return createdDiff;
+  } else if (listSortMode === LIST_SORTS.MOST_RECENT) {
+    const createdDiff = compareCreatedDesc(a, b);
+    if (createdDiff !== 0) return createdDiff;
   }
-  return compareByScore(a, b);
+
+  if (sortMode === MATRIX_SORTS.LOW_EFFORT) {
+    return compareLowEffortOrder(a, b, now);
+  }
+  return comparePriorityOrder(a, b, now);
 }
 
-export function sortMatrixEntries(entries, sortMode = MATRIX_SORTS.SCORE) {
-  return entries.slice().sort((a, b) => compareMatrixEntries(a, b, sortMode));
+export function sortMatrixEntries(entries, sortMode = MATRIX_SORTS.SCORE, options = {}) {
+  return entries
+    .slice()
+    .sort((a, b) => compareMatrixEntries(a, b, sortMode, options));
 }
 
 export function classifyTaskPriority(task, now = new Date()) {

@@ -12,6 +12,7 @@ import {
   shouldIncludeTaskInMatrix,
   sortMatrixEntries
 } from "../src/matrix.js";
+import { LIST_SORTS } from "../src/listSorts.js";
 
 describe("matrix filters", () => {
   it("normalizes project names", () => {
@@ -43,7 +44,7 @@ describe("matrix filters", () => {
 describe("matrix sorting", () => {
   const wrap = (task) => ({ task });
 
-  it("sorts by score when no mode provided", () => {
+  it("sorts by urgency, importance, then effort in priority mode", () => {
     const items = [
       wrap({ title: "Charlie", importance: 1, urgency: 3, effort: 1 }),
       wrap({ title: "Alpha", importance: 2, urgency: 1, effort: 1 }),
@@ -52,8 +53,8 @@ describe("matrix sorting", () => {
 
     const sorted = sortMatrixEntries(items);
     expect(sorted.map((entry) => entry.task.title)).toEqual([
-      "Alpha",
       "Charlie",
+      "Alpha",
       "Bravo"
     ]);
   });
@@ -73,6 +74,29 @@ describe("matrix sorting", () => {
       "Heavy",
       "Unknown"
     ]);
+  });
+
+  it("respects list sort overrides", () => {
+    const items = [
+      wrap({ title: "Alpha", created: "2024-01-02", effort: 3 }),
+      wrap({ title: "Bravo", created: "2024-01-01", effort: 1 }),
+      wrap({ title: "Charlie", effort: 2 })
+    ];
+
+    const oldest = sortMatrixEntries(items, MATRIX_SORTS.SCORE, {
+      listSortMode: LIST_SORTS.OLDEST
+    });
+    expect(oldest.map((entry) => entry.task.title)).toEqual(["Bravo", "Alpha", "Charlie"]);
+
+    const mostRecent = sortMatrixEntries(items, MATRIX_SORTS.SCORE, {
+      listSortMode: LIST_SORTS.MOST_RECENT
+    });
+    expect(mostRecent.map((entry) => entry.task.title)).toEqual(["Alpha", "Bravo", "Charlie"]);
+
+    const lowestEffort = sortMatrixEntries(items, MATRIX_SORTS.SCORE, {
+      listSortMode: LIST_SORTS.LOWEST_EFFORT
+    });
+    expect(lowestEffort.map((entry) => entry.task.title)).toEqual(["Bravo", "Charlie", "Alpha"]);
   });
 
   it("falls back to score ordering for equal effort values", () => {
