@@ -5,7 +5,7 @@ import { MATRIX_SORTS } from "../matrix.js";
 
 export default function MatrixSortControl({ value, onChange }) {
   const options = useMemo(() => MATRIX_SORT_OPTION_CONFIG, []);
-  const moodStyles = useMemo(
+  const focusStyles = useMemo(
     () => ({
       [MATRIX_SORTS.SCORE]: {
         colorScheme: "red",
@@ -22,7 +22,7 @@ export default function MatrixSortControl({ value, onChange }) {
   return (
     <HStack spacing={2} align="center">
       <Text fontSize="xs" fontWeight="semibold" textTransform="uppercase" letterSpacing="wide" color="purple.500">
-        Mood
+        Focus
       </Text>
       {options.map((option) => {
         const isActive = value === option.value;
@@ -31,10 +31,13 @@ export default function MatrixSortControl({ value, onChange }) {
             key={option.value}
             size="xs"
             variant={isActive ? "solid" : "outline"}
-            colorScheme={isActive ? moodStyles[option.value]?.colorScheme ?? "purple" : "gray"}
-            boxShadow={isActive ? moodStyles[option.value]?.shadow : undefined}
+            colorScheme={isActive ? focusStyles[option.value]?.colorScheme ?? "purple" : "gray"}
+            boxShadow={isActive ? focusStyles[option.value]?.shadow : undefined}
             onClick={() => {
-              if (isActive) return;
+              if (isActive) {
+                onChange(null);
+                return;
+              }
               onChange(option.value);
             }}
             aria-pressed={isActive}
