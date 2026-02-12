@@ -1,58 +1,60 @@
-# FocusBadger
+# PolySynth Web Demo
 
-<p align="center">
-  <img src="assets/logo.png" alt="FocusBadger logo" width="160" />
-</p>
+This repository now serves the GitHub Pages experience for **PolySynth** with two goals:
 
-[Jump straight to the live board](https://ashokfernandez.github.io/FocusBadger/)
+1. Keep the latest iPlug2 web build embedded at the top of the page.
+2. Keep a companion section for rendered audio examples (`.wav`) so listeners can compare patches and changes over time.
 
-FocusBadger is the cheeky little strategist that keeps your todo list honest. Drop in every task fighting for attention and it whispers back a plan: what’s urgent, what’s truly important, how heavy each lift will be, and which move fits your current focus. It’s your friendly accomplice for building momentum, not another dashboard nagging you about overdue chores.
+## Local development
 
-## Why FocusBadger?
+```bash
+npm install
+npm run dev
+```
 
-- **See the whole story.** Each card shows urgency, importance, and effort so you can quickly decide which bets matter now and which can wait.
-- **Match the moment.** Drag cards between "Today," "This Week," and "Later" to shape a realistic plan, then flip the focus switch to spotlight the next 1–5 tasks that match your energy.
-- **Stay grounded.** Gather work, home, and side quests into one calm view so nothing slips.
-- **Own your data.** Everything lives in approachable JSONL that plays nicely with Git, scripts, and AI helpers.
+Run tests and production build:
 
-## What you can do
+```bash
+npm test
+npm run build:web-demo
+npm run build
+```
 
-- Capture tasks instantly and group them by project without touching a database.
-- Sort by priority or due date, then zoom into the Eisenhower-style matrix to rebalance your workload.
-- Use the assistant workflow to hand tasks to an LLM for batch edits, summaries, or brainstorms.
-- Review progress at the end of the week with filters that spotlight wins and upcoming risks.
+## How the GitHub Pages pipeline works
 
-Curious how the task file is structured? Peek at the [data guide](DATA.md).
+The deploy workflow (`.github/workflows/deploy.yml`) publishes on every push to `main`.
 
-## A week with FocusBadger
+Before `vite build`, it runs:
 
-1. Brain-dump projects and tasks into the board, tagging owners or themes as you go.
-2. Drag cards between lanes to sketch the rhythm of the week.
-3. Hit the focus switch whenever your energy shifts—FocusBadger reshuffles to highlight the next best bite, and you can tweak how many cards glow from the settings menu.
-4. Share the board with an AI assistant for fast edits or summaries using the workflow in [AI_ASSIST.md](AI_ASSIST.md).
-5. Celebrate wins and capture learnings before rolling unfinished work forward.
+```bash
+npm run build:web-demo
+```
 
-## Make it your own
+That script (`scripts/prepare-web-demo.mjs`) can execute an iPlug2 build command and copy generated files into `public/web/PolySynth/`.
 
-FocusBadger ships as a static site, so you can run it locally or host it anywhere. Because your tasks live in a human-friendly JSONL file:
+Set these repository **variables** in GitHub Settings → Secrets and variables → Actions:
 
-- You can version everything with Git or sync it through your own cloud drive.
-- Edits stay transparent—line-by-line changes make reviews and automation simple.
-- Collaborators and AI co-pilots can safely add, update, or summarise tasks using the same prompts.
+- `IPLUG2_WEB_BUILD_COMMAND`: command that builds the iPlug2 web target.
+- `IPLUG2_WEB_BUILD_OUTPUT`: folder path (relative to repo root) containing the built web bundle.
 
-## Getting started locally
+If those variables are not set, the committed placeholder web demo stays in place.
 
-1. Install dependencies with `npm install`.
-2. Start the dev server with `npm run dev` and open the provided URL.
-3. Run `npm test` to make sure everything still behaves.
-4. Open the Assistant workflow modal to copy the AI prompt and share data with your co-pilot.
+## Audio render gallery
 
-## Go deeper
+- Put rendered `.wav` files in `public/renders/`.
+- Register them in `public/renders/renders-manifest.json`.
 
-- [DESIGN.md](DESIGN.md) — guiding principles, architecture notes, and non-goals.
-- [TODOS.md](TODOS.md) — feature roadmap and acceptance criteria for contributors.
-- [AI_ASSIST.md](AI_ASSIST.md) — conversational prompts and tips for editing the board with an LLM.
+Example manifest entry:
 
-## License
-
-MIT
+```json
+{
+  "tracks": [
+    {
+      "name": "Factory Bass Sweep",
+      "file": "factory-bass-sweep.wav",
+      "description": "PolySynth patch with medium resonance",
+      "durationSeconds": 18
+    }
+  ]
+}
+```

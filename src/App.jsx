@@ -1,947 +1,119 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Box,
-  Container,
-  Flex,
-  Stack,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  useClipboard,
-  useDisclosure
-} from "@chakra-ui/react";
-import {
-  addProject as addProjectHelper,
-  buildSnapshot,
-  collectProjects,
-  deleteProject as deleteProjectHelper,
-  hydrateRecords,
-  renameProject as renameProjectHelper
-} from "./projects.js";
-import {
-  ALL_PROJECTS,
-  UNASSIGNED_LABEL,
-  MATRIX_SORTS,
-  classifyTaskPriority,
-  selectHighlightTaskIndexes,
-  shouldIncludeTaskInMatrix,
-  sortMatrixEntries
-} from "./matrix.js";
-import { TOOLBAR_SORTS, projectSectionsFrom } from "./toolbar.js";
-import { buildJSONExport, parseJSONInput } from "./jsonEditor.js";
-import { createTaskPayload } from "./taskFactory.js";
-import { prepareTaskTitleRename } from "./taskRename.js";
-import AddTaskModal from "./components/AddTaskModal.jsx";
-import GlobalToolbar from "./components/GlobalToolbar.jsx";
-import TaskEditor from "./components/TaskEditor.jsx";
-import ProjectManagerModal from "./components/ProjectManagerModal.jsx";
-import WorkspaceHeader from "./components/WorkspaceHeader.jsx";
-import PriorityMatrixSection from "./components/PriorityMatrixSection.jsx";
-import ProjectsPanel from "./components/ProjectsPanel.jsx";
-import AssistantWorkflowModal from "./components/AssistantWorkflowModal.jsx";
-import MatrixSortControl from "./components/MatrixSortControl.jsx";
-import ListSortControl from "./components/ListSortControl.jsx";
-const DEFAULT_MATRIX_FILTERS = [ALL_PROJECTS];
-const STORAGE_MODE_KEY = "taskbadger:storageMode";
-const STORAGE_MODE_LOCAL = "local";
-const STORAGE_MODE_FILE = "file";
-const STORAGE_SNAPSHOT_KEY = "taskbadger:snapshot";
+import { useEffect, useMemo, useState } from "react";
+
+const WEB_PLUGIN_PATH = "web/PolySynth/index.html";
+const RENDER_MANIFEST_PATH = "renders/renders-manifest.json";
+
+function buildAssetUrl(relativePath) {
+  const base = import.meta.env.BASE_URL ?? "/";
+  return `${base}${relativePath}`;
+}
+
+function formatDuration(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "";
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.round(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${remainder}`;
+}
 
 export default function App() {
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [matrixFilters, setMatrixFilters] = useState(DEFAULT_MATRIX_FILTERS);
-  const [matrixSortMode, setMatrixSortMode] = useState(MATRIX_SORTS.SCORE);
-  const [moodHighlightLimit, setMoodHighlightLimit] = useState(3);
-  const [listSortMode, setListSortMode] = useState(TOOLBAR_SORTS.MOST_RECENT);
-  const fileHandleRef = useRef(null);
-  const disclosure = useDisclosure();
-  const projectManagerDisclosure = useDisclosure();
-  const addTaskDisclosure = useDisclosure();
-  const jsonModal = useDisclosure();
-  const lastSavedRef = useRef("");
-  const saveTimeoutRef = useRef(null);
-  const hasLoadedStoredSnapshotRef = useRef(false);
-  const [saveState, setSaveState] = useState({ status: "idle" });
-  const [jsonTabIndex, setJsonTabIndex] = useState(0);
-  const [jsonInputValue, setJsonInputValue] = useState("");
-  const [jsonError, setJsonError] = useState("");
-  const [jsonParsed, setJsonParsed] = useState(null);
-  const [isJsonSaving, setIsJsonSaving] = useState(false);
-  const [workspaceTabIndex, setWorkspaceTabIndex] = useState(0);
-  const [activeFileName, setActiveFileName] = useState("");
-  const [storageMode, setStorageMode] = useState(() => {
-    if (typeof window === "undefined") return STORAGE_MODE_FILE;
-    const stored = window.localStorage.getItem(STORAGE_MODE_KEY);
-    return stored === STORAGE_MODE_LOCAL ? STORAGE_MODE_LOCAL : STORAGE_MODE_FILE;
-  });
-  const isLocalStorageMode = storageMode === STORAGE_MODE_LOCAL;
-  const hasUnassignedTasks = useMemo(
-    () => tasks.some((task) => !(task.project?.trim())),
-    [tasks]
-  );
-  const jsonExport = useMemo(() => buildJSONExport(tasks, projects), [tasks, projects]);
-  const clipboard = useClipboard(jsonExport.clipboardText);
-  const canSaveJson = jsonTabIndex === 1 && jsonParsed?.ok && !jsonError;
-  useEffect(() => {
-    setProjects((prev) => {
-      const derived = collectProjects(
-        tasks,
-        prev.map((name) => ({ type: "project", name }))
-      );
-      if (derived.length === prev.length && derived.every((name, idx) => name === prev[idx])) {
-        return prev;
-      }
-      return derived;
-    });
-  }, [tasks]);
+  const [activeView, setActiveView] = useState("demo");
+  const [renderManifest, setRenderManifest] = useState({ tracks: [] });
 
   useEffect(() => {
-    if (!jsonModal.isOpen) return;
-    if (jsonTabIndex !== 0) return;
-    const initial = parseJSONInput(jsonExport.data);
-    setJsonInputValue(jsonExport.data);
-    if (initial.ok) {
-      setJsonParsed(initial);
-      setJsonError("");
-    } else {
-      setJsonParsed(null);
-      setJsonError(initial.error ?? "");
-    }
-  }, [jsonModal.isOpen, jsonExport, jsonTabIndex]);
-
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_MODE_KEY, storageMode);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [storageMode]);
-
-  useEffect(() => {
-    if (hasLoadedStoredSnapshotRef.current) return;
-    if (!isLocalStorageMode) return;
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_SNAPSHOT_KEY);
-      if (!stored) {
-        hasLoadedStoredSnapshotRef.current = true;
-        return;
-      }
-      const parsed = parseJSONInput(stored);
-      if (!parsed?.ok) {
-        hasLoadedStoredSnapshotRef.current = true;
-        return;
-      }
-      const { tasks: storedTasks, projects: storedProjects } = parsed;
-      setTasks(storedTasks);
-      setProjects(storedProjects);
-      const snapshot = buildSnapshot(storedTasks, storedProjects);
-      lastSavedRef.current = snapshot;
-      setSaveState({ status: storedTasks.length || storedProjects.length ? "saved" : "idle" });
-      hasLoadedStoredSnapshotRef.current = true;
-    } catch (error) {
-      console.error(error);
-      hasLoadedStoredSnapshotRef.current = true;
-    }
-  }, [isLocalStorageMode, buildSnapshot]);
-
-  useEffect(() => {
-    setMatrixFilters((prev) => {
-      if (prev.includes(ALL_PROJECTS)) return DEFAULT_MATRIX_FILTERS;
-      const allowed = new Set(projects);
-      if (hasUnassignedTasks) {
-        allowed.add(UNASSIGNED_LABEL);
-      }
-      const next = prev.filter((value) => value === ALL_PROJECTS || allowed.has(value));
-      return next.length ? next : DEFAULT_MATRIX_FILTERS;
-    });
-  }, [projects, hasUnassignedTasks]);
-
-  const matrixFilterOptions = useMemo(() => {
-    const options = [ALL_PROJECTS, ...projects];
-    if (hasUnassignedTasks) {
-      options.push(UNASSIGNED_LABEL);
-    }
-    return options;
-  }, [projects, hasUnassignedTasks]);
-
-  const clearPendingSave = useCallback(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
-    }
-  }, []);
-
-  const writeToHandle = useCallback(async (handle, text) => {
-    const writable = await handle.createWritable();
-    await writable.write(text);
-    await writable.close();
-  }, []);
-
-  const ensureHandleForSave = useCallback(async () => {
-    if (fileHandleRef.current) return fileHandleRef.current;
-    if (!window.showSaveFilePicker) {
-      alert("Use a Chromium browser for File System Access support");
-      return null;
-    }
-    const handle = await window.showSaveFilePicker({
-      suggestedName: "tasks.jsonl",
-      types: [{ description: "JSONL", accept: { "text/plain": [".jsonl"] } }]
-    });
-    fileHandleRef.current = handle;
-    setActiveFileName(handle.name ?? "");
-    return handle;
-  }, []);
-
-  const highlightNow = useMemo(() => new Date(), [tasks, matrixFilters, matrixSortMode]);
-
-  const matrix = useMemo(() => {
-    const now = highlightNow;
-    const groups = {
-      today: [],
-      schedule: [],
-      delegate: [],
-      consider: []
-    };
-
-    tasks.forEach((task, index) => {
-      if (task.done) return;
-      const priority = classifyTaskPriority(task, now);
-
-      if (!shouldIncludeTaskInMatrix(task, matrixFilters)) return;
-
-      if (priority.isUrgent && priority.isImportant) {
-        groups.today.push({ task, index, priority });
-      } else if (!priority.isUrgent && priority.isImportant) {
-        groups.schedule.push({ task, index, priority });
-      } else if (priority.isUrgent && !priority.isImportant) {
-        groups.delegate.push({ task, index, priority });
-      } else {
-        groups.consider.push({ task, index, priority });
-      }
-    });
-
-    return {
-      today: sortMatrixEntries(groups.today, matrixSortMode, { now, listSortMode }),
-      schedule: sortMatrixEntries(groups.schedule, matrixSortMode, { now, listSortMode }),
-      delegate: sortMatrixEntries(groups.delegate, matrixSortMode, { now, listSortMode }),
-      consider: sortMatrixEntries(groups.consider, matrixSortMode, { now, listSortMode })
-    };
-  }, [tasks, matrixFilters, matrixSortMode, highlightNow, listSortMode]);
-
-  const highlightedTaskIndexes = useMemo(
-    () =>
-      selectHighlightTaskIndexes(tasks, matrixSortMode, {
-        filters: matrixFilters,
-        now: highlightNow,
-        limit: moodHighlightLimit
-      }),
-    [tasks, matrixSortMode, matrixFilters, highlightNow, moodHighlightLimit]
-  );
-
-  const projectGroups = useMemo(
-    () => projectSectionsFrom(tasks, projects, listSortMode, matrixFilters),
-    [tasks, projects, listSortMode, matrixFilters]
-  );
-
-  const projectUsage = useMemo(() => {
-    const counts = {};
-    tasks.forEach((task) => {
-      const name = task.project?.trim();
-      if (!name) return;
-      counts[name] = (counts[name] ?? 0) + 1;
-    });
-    return counts;
-  }, [tasks]);
-
-  useEffect(() => {
-    const snapshot = buildSnapshot(tasks, projects);
-
-    if (isLocalStorageMode) {
-      clearPendingSave();
-      if (typeof window === "undefined") {
-        setSaveState({ status: tasks.length || projects.length ? "unsynced" : "idle" });
-        return () => {};
-      }
-      if (!tasks.length && !projects.length) {
-        try {
-          window.localStorage.removeItem(STORAGE_SNAPSHOT_KEY);
-        } catch (error) {
+    const controller = new AbortController();
+    fetch(buildAssetUrl(RENDER_MANIFEST_PATH), { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load render manifest");
+        return response.json();
+      })
+      .then((manifest) => {
+        const tracks = Array.isArray(manifest?.tracks) ? manifest.tracks : [];
+        setRenderManifest({ tracks });
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") {
           console.error(error);
+          setRenderManifest({ tracks: [] });
         }
-        lastSavedRef.current = "";
-        setSaveState({ status: "idle" });
-        return () => {};
-      }
-      if (snapshot === lastSavedRef.current) {
-        setSaveState({ status: "saved" });
-        return () => {};
-      }
-      setSaveState({ status: "saving" });
-      const timeout = setTimeout(() => {
-        try {
-          window.localStorage.setItem(STORAGE_SNAPSHOT_KEY, snapshot);
-          lastSavedRef.current = snapshot;
-          setSaveState({ status: "saved", timestamp: Date.now() });
-        } catch (error) {
-          console.error(error);
-          setSaveState({ status: "error", error });
-        } finally {
-          saveTimeoutRef.current = null;
-        }
-      }, 400);
-      saveTimeoutRef.current = timeout;
-      return () => {
-        clearTimeout(timeout);
-        if (saveTimeoutRef.current === timeout) {
-          saveTimeoutRef.current = null;
-        }
-      };
-    }
+      });
 
-    const handle = fileHandleRef.current;
-
-    if (!handle) {
-      clearPendingSave();
-      if (tasks.length || projects.length) {
-        setSaveState({ status: "unsynced" });
-      } else {
-        setSaveState({ status: "idle" });
-      }
-      return () => {};
-    }
-
-    if (snapshot === lastSavedRef.current) {
-      clearPendingSave();
-      setSaveState({ status: "saved" });
-      return () => {};
-    }
-
-    clearPendingSave();
-    setSaveState({ status: "dirty" });
-    const timeout = setTimeout(async () => {
-      setSaveState({ status: "saving" });
-      try {
-        await writeToHandle(handle, snapshot);
-        lastSavedRef.current = snapshot;
-        setSaveState({ status: "saved", timestamp: Date.now() });
-      } catch (error) {
-        console.error(error);
-        setSaveState({ status: "error", error });
-      } finally {
-        saveTimeoutRef.current = null;
-      }
-    }, 600);
-    saveTimeoutRef.current = timeout;
-
-    return () => {
-      clearTimeout(timeout);
-      if (saveTimeoutRef.current === timeout) {
-        saveTimeoutRef.current = null;
-      }
-    };
-  }, [
-    tasks,
-    projects,
-    isLocalStorageMode,
-    buildSnapshot,
-    writeToHandle,
-    clearPendingSave
-  ]);
-
-  const updateTask = useCallback((index, mutator) => {
-    setTasks((prev) => {
-      const current = prev[index];
-      if (!current) return prev;
-      const draft = { ...current };
-      const outcome = mutator(draft);
-      if (!outcome) return prev;
-      const nextTask = outcome === true ? draft : { ...draft, ...outcome };
-      if (outcome !== true && typeof outcome === "object") {
-        for (const [key, value] of Object.entries(outcome)) {
-          if (value === undefined) {
-            delete nextTask[key];
-          }
-        }
-      }
-      nextTask.updated = new Date().toISOString();
-      const next = [...prev];
-      next[index] = nextTask;
-      return next;
-    });
+    return () => controller.abort();
   }, []);
 
-  const addProject = useCallback(
-    (name) => {
-      const result = addProjectHelper(projects, name);
-      if (result.ok) {
-        setProjects(result.projects);
-      }
-      return result;
-    },
-    [projects]
-  );
-
-  const renameProject = useCallback(
-    (oldName, newName) => {
-      const result = renameProjectHelper(projects, tasks, oldName, newName);
-      if (result.ok) {
-        setProjects(result.projects);
-        if (result.tasks !== tasks) {
-          setTasks(result.tasks);
-        }
-      }
-      return result;
-    },
-    [projects, tasks]
-  );
-
-  const deleteProject = useCallback(
-    (name) => {
-      const result = deleteProjectHelper(projects, tasks, name);
-      if (result.ok) {
-        setProjects(result.projects);
-        if (result.tasks !== tasks) {
-          setTasks(result.tasks);
-        }
-      }
-      return result;
-    },
-    [projects, tasks]
-  );
-
-  const handleInlineProjectCreate = useCallback(
-    (name) => addProject(name),
-    [addProject]
-  );
-
-  const handleOpenEditor = useCallback(
-    (index) => {
-      setEditingIndex(index);
-      disclosure.onOpen();
-    },
-    [disclosure]
-  );
-
-  const handleToggleDone = useCallback(
-    (index) => {
-      updateTask(index, (draft) => {
-        draft.done = !draft.done;
-        return true;
-      });
-    },
-    [updateTask]
-  );
-
-  const handleMatrixDrop = useCallback(
-    (quadrant, rawIndex) => {
-      const index = Number.parseInt(rawIndex, 10);
-      if (Number.isNaN(index)) return;
-      updateTask(index, (draft) => {
-        switch (quadrant) {
-          case "today":
-            draft.urgency = 4;
-            draft.importance = 4;
-            break;
-          case "schedule":
-            draft.importance = 4;
-            draft.urgency = 2;
-            break;
-          case "delegate":
-            draft.urgency = 4;
-            draft.importance = 1;
-            break;
-          case "consider":
-            draft.urgency = 1;
-            draft.importance = 1;
-            break;
-          default:
-            return false;
-        }
-        return true;
-      });
-    },
-    [updateTask]
-  );
-
-  const handleTaskTitleRename = useCallback(
-    (index, nextTitle) => {
-      const current = tasks[index];
-      const result = prepareTaskTitleRename(current, nextTitle);
-      if (!result.ok) {
-        return result;
-      }
-      if (result.changed) {
-        updateTask(index, () => ({ title: result.title }));
-      }
-      return { ok: true, name: result.title };
-    },
-    [tasks, updateTask]
-  );
-
-  const handleProjectDrop = useCallback(
-    (projectName, rawIndex) => {
-      const index = Number.parseInt(rawIndex, 10);
-      if (Number.isNaN(index)) return;
-      updateTask(index, (draft) => {
-        const target = projectName ?? undefined;
-        const current = draft.project ?? undefined;
-        if (current === target) return false;
-        return { project: target };
-      });
-    },
-    [updateTask]
-  );
-
-  const handleEffortCommit = useCallback(
-    (index, value) => {
-      const clamped = Math.max(1, Math.min(10, Math.round(value)));
-      updateTask(index, (draft) => {
-        if (draft.effort === clamped) return false;
-        return { effort: clamped };
-      });
-    },
-    [updateTask]
-  );
-
-  const toggleMatrixFilter = useCallback((filter) => {
-    setMatrixFilters((prev) => {
-      if (filter === ALL_PROJECTS) {
-        return DEFAULT_MATRIX_FILTERS;
-      }
-      const withoutAll = prev.filter((value) => value !== ALL_PROJECTS);
-      const hasFilter = withoutAll.includes(filter);
-      const next = hasFilter
-        ? withoutAll.filter((value) => value !== filter)
-        : [...withoutAll, filter];
-      return next.length ? next : DEFAULT_MATRIX_FILTERS;
-    });
-  }, []);
-
-  const handleMatrixSortChange = useCallback((mode) => {
-    setMatrixSortMode((prev) => (prev === mode ? prev : mode));
-  }, []);
-
-  const handleMoodHighlightLimitChange = useCallback((nextValue) => {
-    setMoodHighlightLimit((prev) => {
-      const proposed = typeof nextValue === "function" ? nextValue(prev) : nextValue;
-      const clamped = Math.max(1, Math.min(5, Math.round(proposed ?? prev)));
-      return clamped === prev ? prev : clamped;
-    });
-  }, []);
-
-  const handleCreateTask = useCallback(
-    (draft) => {
-      const result = createTaskPayload(draft);
-      if (!result.ok) {
-        return result;
-      }
-      setTasks((prev) => [...prev, result.task]);
-      return { ok: true };
-    },
-    []
-  );
-
-  const openAssistantIo = useCallback(
-    (tab = 0) => {
-      setJsonTabIndex(tab);
-      if (tab === 0) {
-        const initial = parseJSONInput(jsonExport.data);
-        setJsonInputValue(jsonExport.data);
-        if (initial.ok) {
-          setJsonParsed(initial);
-          setJsonError("");
-        } else {
-          setJsonParsed(null);
-          setJsonError(initial.error ?? "");
-        }
-      } else {
-        setJsonInputValue("");
-        setJsonParsed(null);
-        setJsonError("");
-      }
-      jsonModal.onOpen();
-    },
-    [jsonExport, jsonModal]
-  );
-
-  const handleJsonTabChange = useCallback(
-    (index) => {
-      setJsonTabIndex(index);
-      if (index !== 1) {
-        setJsonError("");
-        return;
-      }
-      const result = parseJSONInput(jsonInputValue, {
-        baseTasks: tasks,
-        baseProjects: projects
-      });
-      if (result.ok) {
-        setJsonParsed(result);
-        setJsonError("");
-      } else {
-        setJsonParsed(null);
-        setJsonError(result.error ?? "");
-      }
-    },
-    [jsonInputValue, tasks, projects]
-  );
-
-  const handleJsonInputChange = useCallback((event) => {
-    const { value } = event.target;
-    setJsonInputValue(value);
-    const result = parseJSONInput(value, {
-      baseTasks: tasks,
-      baseProjects: projects
-    });
-    if (result.ok) {
-      setJsonParsed(result);
-      setJsonError("");
-    } else {
-      setJsonParsed(null);
-      setJsonError(result.error ?? "");
-    }
-  }, [tasks, projects]);
-
-  const handleJsonSave = useCallback(async () => {
-    if (!jsonParsed?.ok) return;
-    setIsJsonSaving(true);
-    const nextTasks = jsonParsed.tasks;
-    const nextProjects = jsonParsed.projects;
-    const snapshot = buildSnapshot(nextTasks, nextProjects);
-    try {
-      setTasks(nextTasks);
-      setProjects(nextProjects);
-      clearPendingSave();
-      if (isLocalStorageMode) {
-        lastSavedRef.current = "";
-        setSaveState({ status: nextTasks.length || nextProjects.length ? "saving" : "idle" });
-      } else {
-        const handle = await ensureHandleForSave();
-        if (handle) {
-          setSaveState({ status: "saving" });
-          await writeToHandle(handle, snapshot);
-          lastSavedRef.current = snapshot;
-          setSaveState({ status: "saved", timestamp: Date.now() });
-        } else {
-          lastSavedRef.current = snapshot;
-          setSaveState({ status: nextTasks.length || nextProjects.length ? "unsynced" : "idle" });
-        }
-      }
-      jsonModal.onClose();
-    } catch (error) {
-      console.error(error);
-      setSaveState({ status: "error", error });
-    } finally {
-      setIsJsonSaving(false);
-    }
-  }, [
-    jsonParsed,
-    buildSnapshot,
-    clearPendingSave,
-    ensureHandleForSave,
-    jsonModal,
-    writeToHandle,
-    isLocalStorageMode
-  ]);
-
-  const handleSaveEdit = useCallback(
-    (changes) => {
-      if (editingIndex == null) return;
-      updateTask(editingIndex, () => ({ ...changes }));
-      disclosure.onClose();
-      setEditingIndex(null);
-    },
-    [editingIndex, updateTask, disclosure]
-  );
-
-  const handleCancelEdit = useCallback(() => {
-    disclosure.onClose();
-    setEditingIndex(null);
-  }, [disclosure]);
-
-  const handleStorageModeToggle = useCallback(
-    (nextValue) => {
-      if (nextValue) {
-        fileHandleRef.current = null;
-        lastSavedRef.current = "";
-        if (tasks.length || projects.length) {
-          hasLoadedStoredSnapshotRef.current = true;
-        } else {
-          hasLoadedStoredSnapshotRef.current = false;
-        }
-        setActiveFileName("");
-        setStorageMode(STORAGE_MODE_LOCAL);
-      } else {
-        hasLoadedStoredSnapshotRef.current = true;
-        setActiveFileName(fileHandleRef.current?.name ?? "");
-        setStorageMode(STORAGE_MODE_FILE);
-      }
-    },
-    [tasks, projects]
-  );
-
-  const handleLoadSample = useCallback(async () => {
-    const resolveSampleUrl = (path) => {
-      const trimmedPath = path.replace(/^\/+/u, "");
-
-      if (typeof window === "undefined") {
-        return trimmedPath;
-      }
-
-      const baseElement = document.querySelector("base")?.href;
-      if (baseElement) {
-        try {
-          return new URL(trimmedPath, baseElement).toString();
-        } catch (error) {
-          console.error(error);
-        }
-      }
-
-      try {
-        const baseValue = import.meta.env.BASE_URL ?? "/";
-        const baseUrl = new URL(baseValue, window.location.href);
-        return new URL(trimmedPath, baseUrl).toString();
-      } catch (error) {
-        console.error(error);
-      }
-
-      return new URL(trimmedPath, window.location.href).toString();
-    };
-
-    const sources = ["tasks.json", "tasks.sample.jsonl"]; // attempt canonical names first
-
-    for (const source of sources) {
-      const candidateUrls = [resolveSampleUrl(source)];
-      const rawWithSlash = source.startsWith("/") ? source : `/${source}`;
-      candidateUrls.push(rawWithSlash);
-      candidateUrls.push(source);
-
-      for (const url of candidateUrls) {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          const text = await res.text();
-          const parsed = parseJSONInput(text);
-          if (!parsed.ok) continue;
-          const { tasks: taskRecords, projects: projectList } = parsed;
-
-          hasLoadedStoredSnapshotRef.current = true;
-          fileHandleRef.current = null;
-          setActiveFileName("");
-          setStorageMode(STORAGE_MODE_LOCAL);
-
-          const snapshot = buildSnapshot(taskRecords, projectList);
-          lastSavedRef.current = "";
-          setSaveState({ status: taskRecords.length || projectList.length ? "saving" : "idle" });
-
-          setProjects(projectList);
-          setTasks(taskRecords);
-          return;
-        } catch (error) {
-          console.error(error);
-        }
-      }
-    }
-
-    alert("Unable to load sample tasks.json");
-  }, [buildSnapshot, setStorageMode]);
-
-  const handleOpenFile = useCallback(async () => {
-    if (!window.showOpenFilePicker) {
-      alert("Use a Chromium browser for File System Access support");
-      return;
-    }
-    const [handle] = await window.showOpenFilePicker({
-      types: [{ description: "JSONL", accept: { "text/plain": [".jsonl"] } }]
-    });
-    fileHandleRef.current = handle;
-    setStorageMode(STORAGE_MODE_FILE);
-    const file = await handle.getFile();
-    const text = await file.text();
-    const parsed = parseJSONInput(text);
-    if (!parsed.ok) {
-      alert(parsed.error ?? "Unable to parse JSON");
-      fileHandleRef.current = null;
-      setActiveFileName("");
-      return;
-    }
-    const { tasks: taskRecords, projects: projectList } = parsed;
-    lastSavedRef.current = buildSnapshot(taskRecords, projectList);
-    setActiveFileName(handle.name ?? "");
-    setProjects(projectList);
-    setTasks(taskRecords);
-    setSaveState({ status: "saved", timestamp: Date.now() });
-  }, []);
-
-  const handleSaveFile = useCallback(async () => {
-    const handle = await ensureHandleForSave();
-    if (!handle) return;
-    setActiveFileName(handle.name ?? "");
-    clearPendingSave();
-    const snapshot = buildSnapshot(tasks, projects);
-    setSaveState({ status: "saving" });
-    try {
-      await writeToHandle(handle, snapshot);
-      saveTimeoutRef.current = null;
-      lastSavedRef.current = snapshot;
-      setSaveState({ status: "saved", timestamp: Date.now() });
-    } catch (error) {
-      console.error(error);
-      setSaveState({ status: "error", error });
-    }
-  }, [tasks, projects, ensureHandleForSave, clearPendingSave, writeToHandle, buildSnapshot]);
-
-  const editingTask = editingIndex != null ? tasks[editingIndex] : null;
-
-  useEffect(() => () => clearPendingSave(), [clearPendingSave]);
+  const webDemoUrl = useMemo(() => buildAssetUrl(WEB_PLUGIN_PATH), []);
 
   return (
-    <Container maxW="8xl" px={{ base: 4, md: 6 }} py={10}>
-      <Stack spacing={10}>
-        <WorkspaceHeader
-          onAddTask={addTaskDisclosure.onOpen}
-          onOpenFile={handleOpenFile}
-          onAssistantTab={openAssistantIo}
-          saveState={saveState}
-          onSave={isLocalStorageMode ? undefined : handleSaveFile}
-          isLocalStorageEnabled={isLocalStorageMode}
-          onToggleLocalStorage={handleStorageModeToggle}
-          activeFileName={activeFileName}
-          moodHighlightLimit={moodHighlightLimit}
-          onMoodHighlightLimitChange={handleMoodHighlightLimitChange}
-        />
-        <Tabs
-          index={workspaceTabIndex}
-          onChange={setWorkspaceTabIndex}
-          variant="enclosed"
-          colorScheme="purple"
-          isLazy
-        >
-          <Stack spacing={4}>
-            <Flex
-              direction={{ base: "column", md: "row" }}
-              align={{ base: "flex-start", md: "center" }}
-              justify="space-between"
-              gap={{ base: 3, md: 6 }}
-            >
-              <TabList flexWrap="wrap" columnGap={2} rowGap={2}>
-                <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
-                  Priority
-                </Tab>
-                <Tab fontWeight="semibold" _selected={{ fontWeight: "bold", color: "purple.600" }}>
-                  Projects
-                </Tab>
-              </TabList>
-              <Box flexShrink={0} alignSelf={{ base: "flex-start", md: "center" }}>
-                <MatrixSortControl value={matrixSortMode} onChange={handleMatrixSortChange} />
-              </Box>
-            </Flex>
-            <TabPanels>
-              <TabPanel px={0} pt={0} pb={0}>
-                <Stack spacing={4}>
-                  <GlobalToolbar
-                    filterOptions={matrixFilterOptions}
-                    activeFilters={matrixFilters}
-                    onToggleFilter={toggleMatrixFilter}
-                  >
-                    <ListSortControl value={listSortMode} onChange={setListSortMode} label="Sort" />
-                  </GlobalToolbar>
-                  <Box
-                    maxH={{ base: "none", lg: "80vh" }}
-                    overflowY={{ base: "visible", lg: "auto" }}
-                    pr={{ lg: 2 }}
-                  >
-                    <PriorityMatrixSection
-                      matrix={matrix}
-                      sortMode={matrixSortMode}
-                      highlightedTaskIndexes={highlightedTaskIndexes}
-                      onEditTask={handleOpenEditor}
-                      onToggleTask={handleToggleDone}
-                      onDropTask={handleMatrixDrop}
-                      onEffortChange={handleEffortCommit}
-                      onAddTask={addTaskDisclosure.onOpen}
-                      onLoadDemo={handleLoadSample}
-                      onRenameTask={handleTaskTitleRename}
-                    />
-                  </Box>
-                </Stack>
-              </TabPanel>
-              <TabPanel px={0} pt={0}>
-                <Stack spacing={4}>
-                  <GlobalToolbar
-                    filterOptions={matrixFilterOptions}
-                    activeFilters={matrixFilters}
-                    onToggleFilter={toggleMatrixFilter}
-                  >
-                    <ListSortControl value={listSortMode} onChange={setListSortMode} label="Sort" />
-                  </GlobalToolbar>
-                  <ProjectsPanel
-                    projectGroups={projectGroups}
-                    onManageProjects={projectManagerDisclosure.onOpen}
-                    onAddTask={addTaskDisclosure.onOpen}
-                    onRenameProject={renameProject}
-                    onRenameTask={handleTaskTitleRename}
-                    onEditTask={handleOpenEditor}
-                    onToggleTask={handleToggleDone}
-                    onDropProject={handleProjectDrop}
-                    onEffortChange={handleEffortCommit}
-                    highlightMode={matrixSortMode}
-                    highlightedTaskIndexes={highlightedTaskIndexes}
-                  />
-                </Stack>
-              </TabPanel>
-            </TabPanels>
-          </Stack>
-        </Tabs>
-      </Stack>
-      <ProjectManagerModal
-        isOpen={projectManagerDisclosure.isOpen}
-        onClose={projectManagerDisclosure.onClose}
-        projects={projects}
-        usage={projectUsage}
-        onAdd={addProject}
-        onRename={renameProject}
-        onDelete={deleteProject}
-      />
-      {editingTask ? (
-        <TaskEditor
-          task={editingTask}
-          isOpen={disclosure.isOpen}
-          onCancel={handleCancelEdit}
-          onSave={handleSaveEdit}
-          projects={projects}
-          onCreateProject={handleInlineProjectCreate}
-        />
-      ) : null}
-      <AddTaskModal
-        isOpen={addTaskDisclosure.isOpen}
-        onClose={addTaskDisclosure.onClose}
-        onCreate={handleCreateTask}
-        projects={projects}
-        onCreateProject={handleInlineProjectCreate}
-      />
-      <AssistantWorkflowModal
-        isOpen={jsonModal.isOpen}
-        onClose={jsonModal.onClose}
-        tabIndex={jsonTabIndex}
-        onTabChange={handleJsonTabChange}
-        exportText={jsonExport.clipboardText}
-        onCopyExport={clipboard.onCopy}
-        hasCopiedExport={clipboard.hasCopied}
-        inputValue={jsonInputValue}
-        onInputChange={handleJsonInputChange}
-        error={jsonError}
-        canSave={canSaveJson}
-        onSave={handleJsonSave}
-        isSaving={isJsonSaving}
-      />
-    </Container>
+    <main className="page-shell">
+      <header className="top-nav">
+        <div>
+          <p className="eyebrow">GitHub Pages Demo</p>
+          <h1>PolySynth</h1>
+        </div>
+        <nav className="tabs" aria-label="Primary">
+          <button
+            type="button"
+            className={activeView === "demo" ? "active" : ""}
+            onClick={() => setActiveView("demo")}
+          >
+            Live web plugin
+          </button>
+          <button
+            type="button"
+            className={activeView === "renders" ? "active" : ""}
+            onClick={() => setActiveView("renders")}
+          >
+            Audio renders
+          </button>
+        </nav>
+      </header>
+
+      <section className={activeView === "demo" ? "panel" : "panel hidden"}>
+        <div className="panel-header">
+          <h2>Latest PolySynth web build</h2>
+          <a href={webDemoUrl} target="_blank" rel="noreferrer">
+            Open plugin in a new tab
+          </a>
+        </div>
+        <div className="plugin-frame-wrap">
+          <iframe
+            title="PolySynth Web Demo"
+            src={webDemoUrl}
+            className="plugin-frame"
+            loading="lazy"
+          />
+        </div>
+        <p className="panel-note">
+          This embed is populated by CI and updated on every push to <code>main</code>.
+        </p>
+      </section>
+
+      <section className={activeView === "renders" ? "panel" : "panel hidden"}>
+        <div className="panel-header">
+          <h2>Audio renders</h2>
+          <button type="button" onClick={() => setActiveView("demo")}>
+            Back to live demo
+          </button>
+        </div>
+        {renderManifest.tracks.length ? (
+          <ul className="render-grid">
+            {renderManifest.tracks.map((track) => (
+              <li key={track.file} className="render-card">
+                <h3>{track.name ?? track.file}</h3>
+                <p>{track.description ?? "PolySynth render"}</p>
+                <audio controls preload="none" src={buildAssetUrl(`renders/${track.file}`)} />
+                <small>{formatDuration(track.durationSeconds)}</small>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="empty-state">
+            No audio renders yet. Add wav files under <code>public/renders/</code> and list them in
+            <code>public/renders/renders-manifest.json</code>.
+          </p>
+        )}
+      </section>
+    </main>
   );
 }
