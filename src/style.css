@@ -1,13 +1,150 @@
-html, body {
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
   margin: 0;
-  background-color: var(--chakra-colors-app-bg);
+  min-height: 100%;
+  background: #0f1117;
+  color: #efeff2;
 }
 
 body {
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  color: var(--chakra-colors-text-primary);
 }
 
-a {
+* {
+  box-sizing: border-box;
+}
+
+.page-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+h1 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.tabs button,
+.panel-header a,
+.panel-header button {
+  border: 1px solid #393f4a;
+  background: #1e232d;
   color: inherit;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: #4f6cff;
+  border-color: #4f6cff;
+}
+
+.panel {
+  border: 1px solid #2b313d;
+  border-radius: 16px;
+  background: #151922;
+  padding: 1rem;
+}
+
+.panel.hidden {
+  display: none;
+}
+
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.plugin-frame-wrap {
+  width: 100%;
+  border: 1px solid #32394a;
+  border-radius: 12px;
+  background: #0c0f15;
+  overflow: hidden;
+}
+
+.plugin-frame {
+  width: 100%;
+  min-height: 70vh;
+  border: 0;
+}
+
+.panel-note,
+.empty-state {
+  opacity: 0.85;
+  margin-bottom: 0;
+}
+
+.render-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.render-card {
+  border: 1px solid #32394a;
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #0f141d;
+}
+
+.render-card h3 {
+  margin: 0 0 0.4rem;
+}
+
+.render-card p {
+  margin: 0 0 0.6rem;
+  opacity: 0.8;
+}
+
+.render-card audio {
+  width: 100%;
+}
+
+.render-card small {
+  display: block;
+  margin-top: 0.4rem;
+  opacity: 0.7;
 }

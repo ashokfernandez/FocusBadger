@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "node --test",
     "update:favicons": "node scripts/generate-icons.mjs",
-    "prebuild": "npm run update:favicons"
+    "prebuild": "npm run update:favicons",
+    "build:web-demo": "node scripts/prepare-web-demo.mjs"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.1.1",

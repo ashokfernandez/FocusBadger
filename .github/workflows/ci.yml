@@ -2,12 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  test:
+  verify:
+    name: Test and build (ubuntu)
     runs-on: ubuntu-latest
 
     steps:
@@ -18,10 +19,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run tests
         run: npm test
+
+      - name: Prepare web demo assets
+        run: npm run build:web-demo
+
+      - name: Build app
+        run: npm run build
